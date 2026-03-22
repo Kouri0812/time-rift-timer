@@ -45,7 +45,7 @@
     }
 
     .header {
-      padding: 22px 24px 6px;
+      padding: 20px 22px 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -76,9 +76,9 @@
     }
 
     .main {
-      padding: 18px 24px 24px;
+      padding: 14px 22px 22px;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .viewer-banner,
@@ -101,12 +101,13 @@
     }
 
     .hero {
-      background: linear-gradient(180deg, rgba(255,255,255,.80), rgba(246,249,253,.94));
+      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(246,249,253,.96));
       border: 1px solid var(--line);
       border-radius: 28px;
       padding: 22px;
       overflow: hidden;
       transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+      order: 1;
     }
 
     .status-row {
@@ -175,10 +176,18 @@
       transition: width .12s linear, background-color .2s ease;
     }
 
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      order: 2;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
+      order: 3;
     }
 
     .card {
@@ -212,16 +221,12 @@
       display: grid;
       grid-template-columns: 1fr auto auto;
       gap: 12px;
+      order: 4;
     }
 
     .share-row {
       grid-template-columns: 1.2fr .8fr;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      order: 5;
     }
 
     button, input { font-family: inherit; }
@@ -255,7 +260,7 @@
     button:disabled { opacity: .55; cursor: not-allowed; }
 
     .action-btn {
-      min-height: 92px;
+      min-height: 88px;
       font-size: 28px;
       font-weight: 900;
       letter-spacing: -.02em;
@@ -296,7 +301,6 @@
     .share-btn { min-width: 120px; }
 
     .share-url { color: var(--muted); }
-
     .footer { display: none; }
 
     .safe .status, .safe .number { color: var(--safe); }
@@ -329,12 +333,162 @@
     }
 
     @media (max-width: 700px) {
-      .cards { grid-template-columns: repeat(2, 1fr); }
-      .controls { grid-template-columns: repeat(2, 1fr); }
-      .header, .status-row { align-items: flex-start; flex-direction: column; }
-      .spawn-action, .despawn-action { grid-column: span 2; }
-      .action-btn { min-height: 88px; font-size: 26px; }
-      .room-row, .share-row { grid-template-columns: 1fr; }
+      body {
+        display: block;
+        padding: 8px;
+      }
+
+      .app {
+        width: 100%;
+        border-radius: 26px;
+      }
+
+      .header {
+        padding: 16px 16px 8px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .title {
+        font-size: 18px;
+      }
+
+      .sub {
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .badge {
+        font-size: 11px;
+        padding: 7px 11px;
+      }
+
+      .main {
+        padding: 10px 16px 16px;
+        gap: 10px;
+      }
+
+      .viewer-banner,
+      .sync-banner {
+        order: 0;
+        padding: 10px 12px;
+        font-size: 12px;
+        border-radius: 16px;
+      }
+
+      .hero {
+        order: 1;
+        padding: 16px;
+        border-radius: 22px;
+        position: sticky;
+        top: 8px;
+        z-index: 5;
+      }
+
+      .status-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .status {
+        font-size: 12px;
+      }
+
+      .phase-count {
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .countdown {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 4px;
+        margin: 6px 0 8px;
+      }
+
+      .number {
+        font-size: clamp(92px, 29vw, 136px);
+        line-height: .9;
+      }
+
+      .label {
+        font-size: 17px;
+        padding-bottom: 0;
+      }
+
+      .hint {
+        font-size: 12px;
+        min-height: auto;
+      }
+
+      .bar-wrap {
+        margin-top: 12px;
+      }
+
+      .bar {
+        height: 10px;
+      }
+
+      .controls {
+        order: 2;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .spawn-action,
+      .despawn-action {
+        grid-column: span 2;
+      }
+
+      .action-btn {
+        min-height: 72px;
+        font-size: 24px;
+        border-radius: 20px;
+      }
+
+      .action-btn small,
+      .share-btn small,
+      .room-btn small {
+        margin-top: 6px;
+        font-size: 11px;
+      }
+
+      .cards {
+        order: 3;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .card {
+        padding: 13px;
+        border-radius: 18px;
+      }
+
+      .card .k {
+        font-size: 10px;
+        margin-bottom: 6px;
+      }
+
+      .card .v {
+        font-size: 21px;
+      }
+
+      .room-row,
+      .share-row {
+        order: 4;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      input,
+      button {
+        min-height: 52px;
+        padding: 12px 14px;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
@@ -351,12 +505,6 @@
     <div class="main">
       <div class="viewer-banner" id="viewerBanner">觀看模式</div>
       <div class="sync-banner" id="syncBanner">請先填入 Firebase 設定</div>
-
-      <section class="room-row">
-        <input id="roomInput" type="text" placeholder="房號，例如 lotus-team-a" />
-        <button class="room-btn" id="joinRoomBtn">連線房間<small>建立 / 加入</small></button>
-        <button class="room-btn" id="leaveRoomBtn">離開房間<small>停止同步</small></button>
-      </section>
 
       <section class="hero safe" id="hero">
         <div class="status-row">
@@ -378,6 +526,13 @@
         </div>
       </section>
 
+      <section class="controls">
+        <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · Space</small></button>
+        <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · Ctrl</small></button>
+        <button id="stopBtn">Stop<br><small>S</small></button>
+        <button class="danger-btn" id="resetBtn">Reset<br><small>R</small></button>
+      </section>
+
       <section class="cards">
         <div class="card">
           <div class="k">狀態</div>
@@ -397,11 +552,10 @@
         </div>
       </section>
 
-      <section class="controls">
-        <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · Space</small></button>
-        <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · Ctrl</small></button>
-        <button id="stopBtn">Stop<br><small>S</small></button>
-        <button class="danger-btn" id="resetBtn">Reset<br><small>R</small></button>
+      <section class="room-row">
+        <input id="roomInput" type="text" placeholder="房號，例如 lotus-team-a" />
+        <button class="room-btn" id="joinRoomBtn">連線房間<small>建立 / 加入</small></button>
+        <button class="room-btn" id="leaveRoomBtn">離開房間<small>停止同步</small></button>
       </section>
 
       <section class="share-row">
@@ -424,7 +578,6 @@
       deleteDoc
     } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
 
-    // 1. 把下面改成你自己的 Firebase 專案設定
     const firebaseConfig = {
       apiKey: "AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80",
       authDomain: "more-mss.firebaseapp.com",
