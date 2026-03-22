@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Rift Timer</title>
+  <style>
+    :root {
+      --bg: #edf2f8;
+      --panel: rgba(255,255,255,.78);
+      --panel-2: rgba(246,249,253,.94);
+      --text: #1a2236;
+      --muted: #6d7890;
+      --line: rgba(122, 134, 170, .14);
+      --safe: #6a66ff;
+      --warn: #ff9f1a;
+      --danger: #4b46d9;
+      --shadow: 0 24px 60px rgba(82, 97, 135, .14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(106,102,255,.10), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(127,111,255,.06), transparent 24%),
+        linear-gradient(180deg, #eef3f8 0%, #e7edf5 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Noto Sans TC", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(640px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+
+    .header {
+      padding: 22px 24px 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--safe);
+      border: 1px solid rgba(106,102,255,.14);
+      background: rgba(106,102,255,.08);
+      padding: 8px 12px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .main {
+      padding: 18px 24px 24px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .viewer-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.62);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, rgba(255,255,255,.80), rgba(246,249,253,.94));
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 22px;
+      overflow: hidden;
+      transition: box-shadow .2s ease, transform .2s ease;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+
+    .phase-count {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .countdown {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      line-height: 1;
+      margin: 8px 0 10px;
+      flex-wrap: wrap;
+    }
+
+    .number {
+      font-size: clamp(88px, 18vw, 148px);
+      font-weight: 900;
+      letter-spacing: -.08em;
+    }
+
+    .label {
+      font-size: 16px;
+      color: var(--muted);
+      font-weight: 700;
+      padding-bottom: 10px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    .bar-wrap {
+      margin-top: 18px;
+    }
+
+    .bar {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(106,102,255,.08);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      transition: width .12s linear, background-color .2s ease;
+    }
+
+    .viewer-mode .viewer-banner {
+      display: flex;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+    }
+
+    .card .k {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      letter-spacing: .04em;
+    }
+
+    .card .v {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+
+    .clickable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    button, input { font-family: inherit; }
+
+    button {
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 18px;
+      padding: 14px 12px;
+      background: rgba(255,255,255,.8);
+      color: var(--text);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .08s ease, opacity .15s ease, box-shadow .2s ease;
+      box-shadow: 0 10px 24px rgba(82, 97, 135, .08);
+    }
+
+    button:hover { opacity: .96; }
+    button:active { transform: translateY(1px) scale(.995); }
+
+    .action-btn {
+      min-height: 92px;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      border-radius: 24px;
+    }
+
+    .action-btn small {
+      display: block;
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: .8;
+    }
+
+    .spawn-action {
+      grid-column: span 2;
+      background: linear-gradient(180deg, #736cff, #5f58ed);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(95, 88, 237, .24);
+    }
+
+    .despawn-action {
+      grid-column: span 2;
+      background: linear-gradient(180deg, #ffffff, #f5f8fd);
+      color: var(--text);
+    }
+
+    .danger-btn {
+      background: linear-gradient(180deg, #ffffff, #f5f8fd);
+      color: var(--muted);
+    }
+
+    .share-row {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 12px;
+    }
+
+    .share-url {
+      width: 100%;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .share-btn {
+      min-height: 54px;
+      font-size: 15px;
+      font-weight: 800;
+      background: linear-gradient(180deg, #ffffff, #f5f8fd);
+    }
+
+    .share-btn small {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: .82;
+    }
+
+    .footer { display: none; }
+
+    .safe .status, .safe .number { color: var(--safe); }
+    .warn .status, .warn .number { color: var(--warn); }
+    .warn { box-shadow: 0 24px 42px rgba(255,159,26,.16); }
+    .danger .status, .danger .number { color: var(--danger); }
+
+    .safe .bar-fill { background: linear-gradient(90deg, #d9ddff, #8b87ff); }
+    .warn .bar-fill { background: linear-gradient(90deg, #ffe0b3, #ff9f1a); }
+    .danger .bar-fill { background: linear-gradient(90deg, #9d95ff, #4b46d9); }
+    .critical .status, .critical .number { color: #ff4d6d; }
+    .critical .bar-fill { background: linear-gradient(90deg, #ffd0da, #ff4d6d); }
+    .critical { box-shadow: 0 24px 42px rgba(255,77,109,.16); }
+
+    .pulse { animation: pulse 1.2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 18px 36px rgba(82, 97, 135, .10); }
+      50% { box-shadow: 0 24px 42px rgba(106,102,255,.18); }
+    }
+
+    .viewer-mode .controls,
+    .viewer-mode .cards .clickable,
+    .viewer-mode .share-btn {
+      pointer-events: none;
+      opacity: .55;
+      cursor: not-allowed;
+      filter: grayscale(.15);
+    }
+
+    @media (max-width: 700px) {
+      .cards { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: repeat(2, 1fr); }
+      .header, .status-row { align-items: flex-start; flex-direction: column; }
+      .spawn-action, .despawn-action { grid-column: span 2; }
+      .action-btn { min-height: 88px; font-size: 26px; }
+      .share-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div>
+        <div class="title">Time Rift</div>
+        <div class="sub">時空裂縫計時器 · 70s / 40s / 20s alert</div>
+      </div>
+      <div class="badge">Lotus Timer</div>
+    </div>
+
+    <div class="main">
+      <div class="viewer-banner" id="viewerBanner">Viewer mode</div>
+
+      <section class="hero safe" id="hero">
+        <div class="status-row">
+          <div class="status" id="statusText">Ready</div>
+          <div class="phase-count">Space / Ctrl / S / R / M</div>
+        </div>
+
+        <div class="countdown">
+          <div class="number" id="bigNumber">--</div>
+          <div class="label" id="bigLabel">Tap Spawn or Despawn</div>
+        </div>
+
+        <div class="hint" id="hintText">Space = Spawn ・ Ctrl = Despawn</div>
+
+        <div class="bar-wrap">
+          <div class="bar">
+            <div class="bar-fill" id="barFill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cards">
+        <div class="card">
+          <div class="k">狀態</div>
+          <div class="v" id="stateMini">Idle</div>
+        </div>
+        <div class="card">
+          <div class="k">下次裂縫</div>
+          <div class="v" id="nextSpawnMini">--</div>
+        </div>
+        <div class="card">
+          <div class="k">提示音</div>
+          <div class="v clickable" id="soundMini">ON</div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · Space</small></button>
+        <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · Ctrl</small></button>
+        <button id="stopBtn">Stop<br><small>S</small></button>
+        <button class="danger-btn" id="resetBtn">Reset<br><small>R</small></button>
+      </section>
+
+      <section class="share-row">
+        <input class="share-url" id="shareUrlInput" type="text" readonly value="" />
+        <button class="share-btn" id="shareBtn">Share Link<small>viewer only</small></button>
+      </section>
+    </div>
+
+    <div class="footer"></div>
+  </div>
+
+  <script>
+    const CYCLE = 70;
+    const ACTIVE = 30;
+    const SAFE = 40;
+    const WARN = 20;
+
+    const hero = document.getElementById('hero');
+    const statusText = document.getElementById('statusText');
+    const bigNumber = document.getElementById('bigNumber');
+    const bigLabel = document.getElementById('bigLabel');
+    const hintText = document.getElementById('hintText');
+    const barFill = document.getElementById('barFill');
+
+    const stateMini = document.getElementById('stateMini');
+    const nextSpawnMini = document.getElementById('nextSpawnMini');
+    const soundMini = document.getElementById('soundMini');
+
+    const spawnBtn = document.getElementById('spawnBtn');
+    const despawnBtn = document.getElementById('despawnBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const shareUrlInput = document.getElementById('shareUrlInput');
+    const shareBtn = document.getElementById('shareBtn');
+    const viewerBanner = document.getElementById('viewerBanner');
+
+    const params = new URLSearchParams(window.location.search);
+    const viewerMode = params.get('viewer') === '1' || window.location.hash === '#viewer';
+
+    let running = false;
+    let muted = false;
+    let nextSpawnTarget = 0;
+    let timer = null;
+    let lastWhole = null;
+    let lastPhase = 'idle';
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function beep(type = 'short') {
+      if (muted || viewerMode) return;
+      try {
+        const ctx = getAudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        let duration = 0.08;
+        let freq = 880;
+        if (type === 'warn') { duration = 0.12; freq = 1046; }
+        if (type === 'spawn') { duration = 0.28; freq = 660; }
+
+        osc.frequency.value = freq;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+      } catch (e) {
+        console.warn('Audio unavailable', e);
+      }
+    }
+
+    function fmt(v) {
+      return Math.max(0, v).toFixed(1) + 's';
+    }
+
+    function setClass(state) {
+      hero.classList.remove('safe', 'warn', 'danger', 'critical', 'pulse');
+      hero.classList.add(state);
+      if (state === 'warn' || state === 'danger') hero.classList.add('pulse');
+    }
+
+    function updateSoundUI() {
+      soundMini.textContent = muted ? 'OFF' : 'ON';
+    }
+
+    function updateShareUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('viewer', '1');
+      url.hash = '';
+      shareUrlInput.value = url.toString();
+    }
+
+    async function copyShareUrl() {
+      if (viewerMode) return;
+      const url = shareUrlInput.value;
+      try {
+        await navigator.clipboard.writeText(url);
+        shareBtn.innerHTML = 'Copied<small>send to team</small>';
+        setTimeout(() => {
+          shareBtn.innerHTML = 'Share Link<small>viewer only</small>';
+        }, 1800);
+      } catch (err) {
+        shareUrlInput.focus();
+        shareUrlInput.select();
+        shareBtn.innerHTML = 'Copy manually<small>URL selected</small>';
+      }
+    }
+
+    function calibrateFromSpawn() {
+      if (viewerMode) return;
+      nextSpawnTarget = performance.now() + (CYCLE * 1000);
+      running = true;
+      lastWhole = null;
+      lastPhase = 'danger';
+      beep('spawn');
+      render();
+      if (!timer) timer = setInterval(render, 100);
+    }
+
+    function calibrateFromDespawn() {
+      if (viewerMode) return;
+      nextSpawnTarget = performance.now() + (SAFE * 1000);
+      running = true;
+      lastWhole = null;
+      lastPhase = 'safe';
+      beep('short');
+      render();
+      if (!timer) timer = setInterval(render, 100);
+    }
+
+    function stopTimer() {
+      if (viewerMode) return;
+      running = false;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      statusText.textContent = '已停止';
+      bigNumber.textContent = '--';
+      bigLabel.textContent = '已停止';
+      hintText.textContent = '可重新開始計時';
+      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+      stateMini.textContent = '已停止';
+      nextSpawnMini.textContent = '--';
+      setClass('safe');
+      barFill.style.width = '0%';
+      lastWhole = null;
+      lastPhase = 'idle';
+    }
+
+    function resetTimer() {
+      if (viewerMode) return;
+      running = false;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      statusText.textContent = '待命';
+      bigNumber.textContent = '--';
+      bigLabel.textContent = '按下 Spawn 或 Despawn';
+      hintText.textContent = 'Space = 黑水出現 ・ Ctrl = 黑水消失';
+      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+      stateMini.textContent = '待命';
+      nextSpawnMini.textContent = '--';
+      setClass('safe');
+      barFill.style.width = '0%';
+      lastWhole = null;
+      lastPhase = 'idle';
+    }
+
+    function toggleMute() {
+      if (viewerMode) return;
+      muted = !muted;
+      updateSoundUI();
+    }
+
+    function render() {
+      if (!running) return;
+
+      const now = performance.now();
+      const remaining = Math.max(0, (nextSpawnTarget - now) / 1000);
+      const whole = Math.ceil(remaining);
+      const progress = Math.min(1, (CYCLE - Math.min(CYCLE, remaining)) / CYCLE) * 100;
+      barFill.style.width = `${progress}%`;
+      hero.classList.remove('critical');
+
+      if (remaining > SAFE) {
+        const activeRemain = remaining - SAFE;
+        setClass('danger');
+        statusText.textContent = '黑水中';
+        bigNumber.textContent = Math.ceil(activeRemain);
+        bigLabel.textContent = '時空裂縫持續中';
+        hintText.textContent = '注意走位';
+        hero.style.borderColor = 'rgba(75, 70, 217, .18)';
+        stateMini.textContent = '黑水中';
+        nextSpawnMini.textContent = fmt(remaining);
+        if (lastPhase !== 'danger') {
+          beep('spawn');
+          lastPhase = 'danger';
+        }
+      } else if (remaining <= WARN) {
+        setClass('warn');
+        statusText.textContent = '即將生成';
+        bigNumber.textContent = Math.ceil(remaining);
+        if (whole <= 2) hero.classList.add('critical');
+        bigLabel.textContent = '距離下次時空裂縫';
+        hintText.textContent = remaining <= 5 ? '準備提醒隊友' : '20 秒預警';
+        hero.style.borderColor = 'rgba(255,159,26,.28)';
+        stateMini.textContent = '預警';
+        nextSpawnMini.textContent = fmt(remaining);
+        if (lastPhase !== 'warn') {
+          beep('warn');
+          lastPhase = 'warn';
+        }
+        if (whole !== lastWhole) {
+          if (whole <= 2) {
+            hero.classList.add('critical');
+            beep('warn');
+          } else if (whole <= 5) beep('warn');
+          else beep('short');
+        }
+      } else {
+        setClass('safe');
+        statusText.textContent = '倒數中';
+        bigNumber.textContent = Math.ceil(remaining);
+        if (whole <= 2) hero.classList.add('critical');
+        bigLabel.textContent = '距離下次時空裂縫';
+        hintText.textContent = '持續倒數中';
+        hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+        stateMini.textContent = '倒數';
+        nextSpawnMini.textContent = fmt(remaining);
+        lastPhase = 'safe';
+      }
+
+      lastWhole = whole;
+
+      if (remaining <= 0) {
+        running = false;
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        setClass('danger');
+        statusText.textContent = '已生成';
+        bigNumber.textContent = '0';
+        bigLabel.textContent = '請重新校正';
+        hintText.textContent = '看到黑水後請再按一次 Spawn';
+        hero.style.borderColor = 'rgba(255,77,109,.26)';
+        stateMini.textContent = '已生成';
+        nextSpawnMini.textContent = '0.0s';
+        lastPhase = 'idle';
+      }
+    }
+
+    spawnBtn.addEventListener('click', calibrateFromSpawn);
+    despawnBtn.addEventListener('click', calibrateFromDespawn);
+    stopBtn.addEventListener('click', stopTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    soundMini.addEventListener('click', toggleMute);
+    shareBtn.addEventListener('click', copyShareUrl);
+
+    window.addEventListener('keydown', (e) => {
+      if (viewerMode) return;
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        calibrateFromSpawn();
+      } else if (e.key === 'Control') {
+        calibrateFromDespawn();
+      } else if (e.key === 'r' || e.key === 'R') {
+        resetTimer();
+      } else if (e.key === 's' || e.key === 'S') {
+        stopTimer();
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleMute();
+      }
+    });
+
+    updateShareUrl();
+    updateSoundUI();
+
+    if (viewerMode) {
+      document.body.classList.add('viewer-mode');
+      viewerBanner.textContent = '觀看模式';
+      statusText.textContent = '觀看模式';
+      bigLabel.textContent = '僅供觀看';
+      hintText.textContent = '此頁面無法操作';
+      shareBtn.innerHTML = 'Viewer Page<small>read only</small>';
+    }
+
+    resetTimer();
+  </script>
+</body>
+</html>
