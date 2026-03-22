@@ -35,7 +35,7 @@
     }
 
     .app {
-      width: min(640px, 100%);
+      width: min(680px, 100%);
       background: var(--panel);
       border: 1px solid rgba(255,255,255,.7);
       border-radius: 30px;
@@ -81,7 +81,8 @@
       gap: 14px;
     }
 
-    .viewer-banner {
+    .viewer-banner,
+    .sync-banner {
       display: none;
       align-items: center;
       justify-content: center;
@@ -94,13 +95,18 @@
       font-weight: 700;
     }
 
+    .viewer-mode .viewer-banner,
+    .sync-banner.show {
+      display: flex;
+    }
+
     .hero {
       background: linear-gradient(180deg, rgba(255,255,255,.80), rgba(246,249,253,.94));
       border: 1px solid var(--line);
       border-radius: 28px;
       padding: 22px;
       overflow: hidden;
-      transition: box-shadow .2s ease, transform .2s ease;
+      transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
     }
 
     .status-row {
@@ -169,13 +175,9 @@
       transition: width .12s linear, background-color .2s ease;
     }
 
-    .viewer-mode .viewer-banner {
-      display: flex;
-    }
-
     .cards {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
     }
 
@@ -205,6 +207,17 @@
       user-select: none;
     }
 
+    .room-row,
+    .share-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+    }
+
+    .share-row {
+      grid-template-columns: 1.2fr .8fr;
+    }
+
     .controls {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -212,6 +225,18 @@
     }
 
     button, input { font-family: inherit; }
+
+    input {
+      width: 100%;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      outline: none;
+    }
 
     button {
       border: 1px solid rgba(255,255,255,.7);
@@ -227,6 +252,7 @@
 
     button:hover { opacity: .96; }
     button:active { transform: translateY(1px) scale(.995); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
 
     .action-btn {
       min-height: 92px;
@@ -236,10 +262,12 @@
       border-radius: 24px;
     }
 
-    .action-btn small {
+    .action-btn small,
+    .share-btn small,
+    .room-btn small {
       display: block;
       margin-top: 8px;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       opacity: .8;
     }
@@ -257,41 +285,17 @@
       color: var(--text);
     }
 
-    .danger-btn {
+    .danger-btn,
+    .share-btn,
+    .room-btn {
       background: linear-gradient(180deg, #ffffff, #f5f8fd);
       color: var(--muted);
     }
 
-    .share-row {
-      display: grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 12px;
-    }
+    .room-btn,
+    .share-btn { min-width: 120px; }
 
-    .share-url {
-      width: 100%;
-      background: rgba(255,255,255,.72);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 14px 16px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .share-btn {
-      min-height: 54px;
-      font-size: 15px;
-      font-weight: 800;
-      background: linear-gradient(180deg, #ffffff, #f5f8fd);
-    }
-
-    .share-btn small {
-      display: block;
-      margin-top: 4px;
-      font-size: 12px;
-      opacity: .82;
-    }
+    .share-url { color: var(--muted); }
 
     .footer { display: none; }
 
@@ -316,6 +320,7 @@
 
     .viewer-mode .controls,
     .viewer-mode .cards .clickable,
+    .viewer-mode .room-row,
     .viewer-mode .share-btn {
       pointer-events: none;
       opacity: .55;
@@ -324,12 +329,12 @@
     }
 
     @media (max-width: 700px) {
-      .cards { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
       .controls { grid-template-columns: repeat(2, 1fr); }
       .header, .status-row { align-items: flex-start; flex-direction: column; }
       .spawn-action, .despawn-action { grid-column: span 2; }
       .action-btn { min-height: 88px; font-size: 26px; }
-      .share-row { grid-template-columns: 1fr; }
+      .room-row, .share-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -338,26 +343,33 @@
     <div class="header">
       <div>
         <div class="title">Time Rift</div>
-        <div class="sub">時空裂縫計時器 · 70s / 40s / 20s alert</div>
+        <div class="sub">時空裂縫計時器 · Firebase 同步版</div>
       </div>
-      <div class="badge">Lotus Timer</div>
+      <div class="badge" id="syncStateBadge">Sync idle</div>
     </div>
 
     <div class="main">
-      <div class="viewer-banner" id="viewerBanner">Viewer mode</div>
+      <div class="viewer-banner" id="viewerBanner">觀看模式</div>
+      <div class="sync-banner" id="syncBanner">請先填入 Firebase 設定</div>
+
+      <section class="room-row">
+        <input id="roomInput" type="text" placeholder="房號，例如 lotus-team-a" />
+        <button class="room-btn" id="joinRoomBtn">連線房間<small>建立 / 加入</small></button>
+        <button class="room-btn" id="leaveRoomBtn">離開房間<small>停止同步</small></button>
+      </section>
 
       <section class="hero safe" id="hero">
         <div class="status-row">
-          <div class="status" id="statusText">Ready</div>
-          <div class="phase-count">Space / Ctrl / S / R / M</div>
+          <div class="status" id="statusText">待命</div>
+          <div class="phase-count" id="metaText">Space / Ctrl / S / R / M</div>
         </div>
 
         <div class="countdown">
           <div class="number" id="bigNumber">--</div>
-          <div class="label" id="bigLabel">Tap Spawn or Despawn</div>
+          <div class="label" id="bigLabel">按下 Spawn 或 Despawn</div>
         </div>
 
-        <div class="hint" id="hintText">Space = Spawn ・ Ctrl = Despawn</div>
+        <div class="hint" id="hintText">Space = 黑水出現 ・ Ctrl = 黑水消失</div>
 
         <div class="bar-wrap">
           <div class="bar">
@@ -369,7 +381,7 @@
       <section class="cards">
         <div class="card">
           <div class="k">狀態</div>
-          <div class="v" id="stateMini">Idle</div>
+          <div class="v" id="stateMini">待命</div>
         </div>
         <div class="card">
           <div class="k">下次裂縫</div>
@@ -378,6 +390,10 @@
         <div class="card">
           <div class="k">提示音</div>
           <div class="v clickable" id="soundMini">ON</div>
+        </div>
+        <div class="card">
+          <div class="k">房間</div>
+          <div class="v" id="roomMini">未連線</div>
         </div>
       </section>
 
@@ -390,16 +406,45 @@
 
       <section class="share-row">
         <input class="share-url" id="shareUrlInput" type="text" readonly value="" />
-        <button class="share-btn" id="shareBtn">Share Link<small>viewer only</small></button>
+        <button class="share-btn" id="shareBtn">分享觀看網址<small>viewer only</small></button>
       </section>
     </div>
 
     <div class="footer"></div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp,
+      deleteDoc
+    } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+
+    // 1. 把下面改成你自己的 Firebase 專案設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80",
+      authDomain: "more-mss.firebaseapp.com",
+      projectId: "more-mss",
+      storageBucket: "more-mss.firebasestorage.app",
+      messagingSenderId: "424178571978",
+      appId: "1:424178571978:web:68d477d99908281acfb233"
+    };
+
+    const hasFirebaseConfig = !Object.values(firebaseConfig).some(v => String(v).includes('REPLACE_ME'));
+
+    let app = null;
+    let db = null;
+
+    if (hasFirebaseConfig) {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+    }
+
     const CYCLE = 70;
-    const ACTIVE = 30;
     const SAFE = 40;
     const WARN = 20;
 
@@ -409,10 +454,12 @@
     const bigLabel = document.getElementById('bigLabel');
     const hintText = document.getElementById('hintText');
     const barFill = document.getElementById('barFill');
+    const metaText = document.getElementById('metaText');
 
     const stateMini = document.getElementById('stateMini');
     const nextSpawnMini = document.getElementById('nextSpawnMini');
     const soundMini = document.getElementById('soundMini');
+    const roomMini = document.getElementById('roomMini');
 
     const spawnBtn = document.getElementById('spawnBtn');
     const despawnBtn = document.getElementById('despawnBtn');
@@ -421,9 +468,15 @@
     const shareUrlInput = document.getElementById('shareUrlInput');
     const shareBtn = document.getElementById('shareBtn');
     const viewerBanner = document.getElementById('viewerBanner');
+    const syncBanner = document.getElementById('syncBanner');
+    const syncStateBadge = document.getElementById('syncStateBadge');
+    const roomInput = document.getElementById('roomInput');
+    const joinRoomBtn = document.getElementById('joinRoomBtn');
+    const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 
     const params = new URLSearchParams(window.location.search);
-    const viewerMode = params.get('viewer') === '1' || window.location.hash === '#viewer';
+    const viewerMode = params.get('viewer') === '1';
+    const roomFromUrl = params.get('room') || '';
 
     let running = false;
     let muted = false;
@@ -432,6 +485,9 @@
     let lastWhole = null;
     let lastPhase = 'idle';
     let audioCtx = null;
+    let roomId = '';
+    let unsubscribeRoom = null;
+    let lastRemoteEventId = '';
 
     function getAudioCtx() {
       if (!audioCtx) {
@@ -484,50 +540,47 @@
     function updateShareUrl() {
       const url = new URL(window.location.href);
       url.searchParams.set('viewer', '1');
-      url.hash = '';
+      if (roomId) url.searchParams.set('room', roomId);
       shareUrlInput.value = url.toString();
     }
 
-    async function copyShareUrl() {
-      if (viewerMode) return;
-      const url = shareUrlInput.value;
-      try {
-        await navigator.clipboard.writeText(url);
-        shareBtn.innerHTML = 'Copied<small>send to team</small>';
-        setTimeout(() => {
-          shareBtn.innerHTML = 'Share Link<small>viewer only</small>';
-        }, 1800);
-      } catch (err) {
-        shareUrlInput.focus();
-        shareUrlInput.select();
-        shareBtn.innerHTML = 'Copy manually<small>URL selected</small>';
+    function setSyncState(text, showBanner = false) {
+      syncStateBadge.textContent = text;
+      syncBanner.textContent = text;
+      syncBanner.classList.toggle('show', showBanner);
+    }
+
+    function sanitizeRoomId(raw) {
+      return raw.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').slice(0, 40);
+    }
+
+    function setRoomUI() {
+      roomMini.textContent = roomId || '未連線';
+      roomInput.value = roomId;
+      updateShareUrl();
+      metaText.textContent = roomId ? `房間：${roomId}` : 'Space / Ctrl / S / R / M';
+    }
+
+    function resetDisplay() {
+      statusText.textContent = viewerMode ? '觀看模式' : '待命';
+      bigNumber.textContent = '--';
+      bigLabel.textContent = viewerMode ? '等待房主操作' : '按下 Spawn 或 Despawn';
+      hintText.textContent = viewerMode ? '同步等待中' : 'Space = 黑水出現 ・ Ctrl = 黑水消失';
+      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+      stateMini.textContent = viewerMode ? '等待' : '待命';
+      nextSpawnMini.textContent = '--';
+      setClass('safe');
+      barFill.style.width = '0%';
+      lastWhole = null;
+      lastPhase = 'idle';
+      running = false;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
       }
     }
 
-    function calibrateFromSpawn() {
-      if (viewerMode) return;
-      nextSpawnTarget = performance.now() + (CYCLE * 1000);
-      running = true;
-      lastWhole = null;
-      lastPhase = 'danger';
-      beep('spawn');
-      render();
-      if (!timer) timer = setInterval(render, 100);
-    }
-
-    function calibrateFromDespawn() {
-      if (viewerMode) return;
-      nextSpawnTarget = performance.now() + (SAFE * 1000);
-      running = true;
-      lastWhole = null;
-      lastPhase = 'safe';
-      beep('short');
-      render();
-      if (!timer) timer = setInterval(render, 100);
-    }
-
-    function stopTimer() {
-      if (viewerMode) return;
+    function stopTimer(localOnly = false) {
       running = false;
       if (timer) {
         clearInterval(timer);
@@ -544,32 +597,56 @@
       barFill.style.width = '0%';
       lastWhole = null;
       lastPhase = 'idle';
+      if (!localOnly) publishEvent('stop');
     }
 
-    function resetTimer() {
-      if (viewerMode) return;
+    function resetTimer(localOnly = false) {
       running = false;
       if (timer) {
         clearInterval(timer);
         timer = null;
       }
-      statusText.textContent = '待命';
+      statusText.textContent = viewerMode ? '觀看模式' : '待命';
       bigNumber.textContent = '--';
-      bigLabel.textContent = '按下 Spawn 或 Despawn';
-      hintText.textContent = 'Space = 黑水出現 ・ Ctrl = 黑水消失';
+      bigLabel.textContent = viewerMode ? '等待房主操作' : '按下 Spawn 或 Despawn';
+      hintText.textContent = viewerMode ? '同步等待中' : 'Space = 黑水出現 ・ Ctrl = 黑水消失';
       hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-      stateMini.textContent = '待命';
+      stateMini.textContent = viewerMode ? '等待' : '待命';
       nextSpawnMini.textContent = '--';
       setClass('safe');
       barFill.style.width = '0%';
       lastWhole = null;
       lastPhase = 'idle';
+      if (!localOnly) publishEvent('reset');
     }
 
     function toggleMute() {
       if (viewerMode) return;
       muted = !muted;
       updateSoundUI();
+    }
+
+    function startTimerWithDuration(durationSec, phaseSeed) {
+      nextSpawnTarget = performance.now() + (durationSec * 1000);
+      running = true;
+      lastWhole = null;
+      lastPhase = phaseSeed;
+      render();
+      if (!timer) timer = setInterval(render, 100);
+    }
+
+    function calibrateFromSpawn(localOnly = false) {
+      if (viewerMode && !localOnly) return;
+      startTimerWithDuration(CYCLE, 'danger');
+      beep('spawn');
+      if (!localOnly) publishEvent('spawn', CYCLE);
+    }
+
+    function calibrateFromDespawn(localOnly = false) {
+      if (viewerMode && !localOnly) return;
+      startTimerWithDuration(SAFE, 'safe');
+      beep('short');
+      if (!localOnly) publishEvent('despawn', SAFE);
     }
 
     function render() {
@@ -621,7 +698,6 @@
         setClass('safe');
         statusText.textContent = '倒數中';
         bigNumber.textContent = Math.ceil(remaining);
-        if (whole <= 2) hero.classList.add('critical');
         bigLabel.textContent = '距離下次時空裂縫';
         hintText.textContent = '持續倒數中';
         hero.style.borderColor = 'rgba(122, 134, 170, .14)';
@@ -650,43 +726,137 @@
       }
     }
 
-    spawnBtn.addEventListener('click', calibrateFromSpawn);
-    despawnBtn.addEventListener('click', calibrateFromDespawn);
-    stopBtn.addEventListener('click', stopTimer);
-    resetBtn.addEventListener('click', resetTimer);
+    async function publishEvent(type, duration = null) {
+      if (!db || !roomId || viewerMode) return;
+      const eventId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      lastRemoteEventId = eventId;
+      await setDoc(doc(db, 'timeRiftRooms', roomId), {
+        roomId,
+        type,
+        duration,
+        eventId,
+        emittedAt: Date.now(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+
+    function applyRemoteEvent(data) {
+      if (!data || !data.type) return;
+      if (data.eventId && data.eventId === lastRemoteEventId) return;
+      lastRemoteEventId = data.eventId || '';
+
+      if (data.type === 'spawn') {
+        calibrateFromSpawn(true);
+      } else if (data.type === 'despawn') {
+        calibrateFromDespawn(true);
+      } else if (data.type === 'stop') {
+        stopTimer(true);
+      } else if (data.type === 'reset') {
+        resetTimer(true);
+      }
+    }
+
+    async function joinRoom() {
+      if (!hasFirebaseConfig) {
+        setSyncState('請先填入 Firebase 設定', true);
+        return;
+      }
+      const nextRoom = sanitizeRoomId(roomInput.value || roomFromUrl || 'default-room');
+      if (!nextRoom) {
+        setSyncState('請輸入有效房號', true);
+        return;
+      }
+
+      if (unsubscribeRoom) unsubscribeRoom();
+      roomId = nextRoom;
+      setRoomUI();
+
+      const roomRef = doc(db, 'timeRiftRooms', roomId);
+      unsubscribeRoom = onSnapshot(roomRef, (snap) => {
+        if (!snap.exists()) return;
+        applyRemoteEvent(snap.data());
+      });
+
+      setSyncState(viewerMode ? `Viewer synced: ${roomId}` : `Host synced: ${roomId}`, true);
+    }
+
+    async function leaveRoom() {
+      if (unsubscribeRoom) {
+        unsubscribeRoom();
+        unsubscribeRoom = null;
+      }
+      if (!viewerMode && db && roomId) {
+        try {
+          await deleteDoc(doc(db, 'timeRiftRooms', roomId));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+      roomId = '';
+      setRoomUI();
+      setSyncState('Sync idle', false);
+      resetDisplay();
+    }
+
+    async function copyShareUrl() {
+      const url = shareUrlInput.value;
+      try {
+        await navigator.clipboard.writeText(url);
+        shareBtn.innerHTML = '已複製<small>貼給隊友即可</small>';
+        setTimeout(() => {
+          shareBtn.innerHTML = '分享觀看網址<small>viewer only</small>';
+        }, 1800);
+      } catch (err) {
+        shareUrlInput.focus();
+        shareUrlInput.select();
+        shareBtn.innerHTML = '請手動複製<small>已選取網址</small>';
+      }
+    }
+
+    spawnBtn.addEventListener('click', () => calibrateFromSpawn(false));
+    despawnBtn.addEventListener('click', () => calibrateFromDespawn(false));
+    stopBtn.addEventListener('click', () => stopTimer(false));
+    resetBtn.addEventListener('click', () => resetTimer(false));
     soundMini.addEventListener('click', toggleMute);
     shareBtn.addEventListener('click', copyShareUrl);
+    joinRoomBtn.addEventListener('click', joinRoom);
+    leaveRoomBtn.addEventListener('click', leaveRoom);
 
     window.addEventListener('keydown', (e) => {
       if (viewerMode) return;
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
       if (e.code === 'Space') {
         e.preventDefault();
-        calibrateFromSpawn();
+        calibrateFromSpawn(false);
       } else if (e.key === 'Control') {
-        calibrateFromDespawn();
+        calibrateFromDespawn(false);
       } else if (e.key === 'r' || e.key === 'R') {
-        resetTimer();
+        resetTimer(false);
       } else if (e.key === 's' || e.key === 'S') {
-        stopTimer();
+        stopTimer(false);
       } else if (e.key === 'm' || e.key === 'M') {
         toggleMute();
       }
     });
 
-    updateShareUrl();
     updateSoundUI();
+    setRoomUI();
+    setSyncState(hasFirebaseConfig ? 'Sync ready' : '請先填入 Firebase 設定', !hasFirebaseConfig);
 
     if (viewerMode) {
       document.body.classList.add('viewer-mode');
       viewerBanner.textContent = '觀看模式';
       statusText.textContent = '觀看模式';
-      bigLabel.textContent = '僅供觀看';
-      hintText.textContent = '此頁面無法操作';
-      shareBtn.innerHTML = 'Viewer Page<small>read only</small>';
+      bigLabel.textContent = '等待房主操作';
+      hintText.textContent = '同步等待中';
     }
 
-    resetTimer();
+    if (roomFromUrl) {
+      roomInput.value = roomFromUrl;
+      joinRoom();
+    } else {
+      resetDisplay();
+    }
   </script>
 </body>
 </html>
