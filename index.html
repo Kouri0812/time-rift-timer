@@ -6,15 +6,14 @@
   <title>Time Rift Timer</title>
   <style>
     :root {
-      --bg: #edf2f8;
-      --panel: rgba(255,255,255,.78);
-      --panel-2: rgba(246,249,253,.94);
+      --panel: rgba(255,255,255,.82);
+      --panel-2: rgba(246,249,253,.96);
       --text: #1a2236;
       --muted: #6d7890;
       --line: rgba(122, 134, 170, .14);
-      --safe: #6a66ff;
-      --warn: #ff9f1a;
-      --danger: #4b46d9;
+      --safe-accent: #22c55e;
+      --warn-accent: #f59e0b;
+      --danger-accent: #ef4444;
       --shadow: 0 24px 60px rgba(82, 97, 135, .14);
     }
 
@@ -67,7 +66,7 @@
     .badge {
       font-size: 12px;
       font-weight: 700;
-      color: var(--safe);
+      color: #5f58ed;
       border: 1px solid rgba(106,102,255,.14);
       background: rgba(106,102,255,.08);
       padding: 8px 12px;
@@ -106,7 +105,7 @@
       border-radius: 28px;
       padding: 22px;
       overflow: hidden;
-      transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+      transition: box-shadow .2s ease, border-color .2s ease;
       order: 1;
     }
 
@@ -142,6 +141,7 @@
       font-size: clamp(88px, 18vw, 148px);
       font-weight: 900;
       letter-spacing: -.08em;
+      color: #2a3350;
     }
 
     .label {
@@ -157,9 +157,7 @@
       min-height: 18px;
     }
 
-    .bar-wrap {
-      margin-top: 18px;
-    }
+    .bar-wrap { margin-top: 18px; }
 
     .bar {
       width: 100%;
@@ -178,7 +176,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 12px;
       order: 2;
     }
@@ -269,7 +267,8 @@
 
     .action-btn small,
     .share-btn small,
-    .room-btn small {
+    .room-btn small,
+    .danger-btn small {
       display: block;
       margin-top: 8px;
       font-size: 12px;
@@ -278,14 +277,12 @@
     }
 
     .spawn-action {
-      grid-column: span 2;
       background: linear-gradient(180deg, #736cff, #5f58ed);
       color: #fff;
       box-shadow: 0 16px 34px rgba(95, 88, 237, .24);
     }
 
     .despawn-action {
-      grid-column: span 2;
       background: linear-gradient(180deg, #ffffff, #f5f8fd);
       color: var(--text);
     }
@@ -299,27 +296,26 @@
 
     .room-btn,
     .share-btn { min-width: 120px; }
-
     .share-url { color: var(--muted); }
     .footer { display: none; }
 
-    .safe .status, .safe .number { color: var(--safe); }
-    .warn .status, .warn .number { color: var(--warn); }
-    .warn { box-shadow: 0 24px 42px rgba(255,159,26,.16); }
-    .danger .status, .danger .number { color: var(--danger); }
+    .safe .status { color: var(--safe-accent); }
+    .warn .status { color: var(--warn-accent); }
+    .danger .status { color: var(--danger-accent); }
 
-    .safe .bar-fill { background: linear-gradient(90deg, #d9ddff, #8b87ff); }
-    .warn .bar-fill { background: linear-gradient(90deg, #ffe0b3, #ff9f1a); }
-    .danger .bar-fill { background: linear-gradient(90deg, #9d95ff, #4b46d9); }
-    .critical .status, .critical .number { color: #ff4d6d; }
-    .critical .bar-fill { background: linear-gradient(90deg, #ffd0da, #ff4d6d); }
+    .safe .bar-fill { background: linear-gradient(90deg, #b6f0c8, #22c55e); }
+    .warn .bar-fill { background: linear-gradient(90deg, #ffe0b3, #f59e0b); }
+    .danger .bar-fill { background: linear-gradient(90deg, #ffc0c0, #ef4444); }
+
+    .warn { box-shadow: 0 24px 42px rgba(245,158,11,.16); }
+    .danger { box-shadow: 0 24px 42px rgba(239,68,68,.18); }
     .critical { box-shadow: 0 24px 42px rgba(255,77,109,.16); }
 
     .pulse { animation: pulse 1.2s infinite; }
 
     @keyframes pulse {
       0%, 100% { box-shadow: 0 18px 36px rgba(82, 97, 135, .10); }
-      50% { box-shadow: 0 24px 42px rgba(106,102,255,.18); }
+      50% { box-shadow: 0 24px 42px rgba(239,68,68,.22); }
     }
 
     .viewer-mode .controls,
@@ -350,9 +346,7 @@
         gap: 8px;
       }
 
-      .title {
-        font-size: 18px;
-      }
+      .title { font-size: 18px; }
 
       .sub {
         font-size: 11px;
@@ -393,9 +387,7 @@
         margin-bottom: 6px;
       }
 
-      .status {
-        font-size: 12px;
-      }
+      .status { font-size: 12px; }
 
       .phase-count {
         font-size: 11px;
@@ -424,13 +416,8 @@
         min-height: auto;
       }
 
-      .bar-wrap {
-        margin-top: 12px;
-      }
-
-      .bar {
-        height: 10px;
-      }
+      .bar-wrap { margin-top: 12px; }
+      .bar { height: 10px; }
 
       .controls {
         order: 2;
@@ -451,7 +438,8 @@
 
       .action-btn small,
       .share-btn small,
-      .room-btn small {
+      .room-btn small,
+      .danger-btn small {
         margin-top: 6px;
         font-size: 11px;
       }
@@ -472,9 +460,7 @@
         margin-bottom: 6px;
       }
 
-      .card .v {
-        font-size: 21px;
-      }
+      .card .v { font-size: 21px; }
 
       .room-row,
       .share-row {
@@ -497,7 +483,7 @@
     <div class="header">
       <div>
         <div class="title">Time Rift</div>
-        <div class="sub">時空裂縫計時器 · Firebase 同步版</div>
+        <div class="sub">黑水計時器 · 65–85 秒浮動預警版</div>
       </div>
       <div class="badge" id="syncStateBadge">Sync idle</div>
     </div>
@@ -509,7 +495,7 @@
       <section class="hero safe" id="hero">
         <div class="status-row">
           <div class="status" id="statusText">待命</div>
-          <div class="phase-count" id="metaText">Space / Ctrl / S / R / M</div>
+          <div class="phase-count" id="metaText">Space / Ctrl / R / M</div>
         </div>
 
         <div class="countdown">
@@ -517,7 +503,7 @@
           <div class="label" id="bigLabel">按下 Spawn 或 Despawn</div>
         </div>
 
-        <div class="hint" id="hintText">Space = 黑水出現 ・ Ctrl = 黑水消失</div>
+        <div class="hint" id="hintText">Space = 黑水出現 ・ Ctrl = 黑水消失 ・ 65–85 秒區間為「隨時可能出現」</div>
 
         <div class="bar-wrap">
           <div class="bar">
@@ -529,8 +515,7 @@
       <section class="controls">
         <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · Space</small></button>
         <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · Ctrl</small></button>
-        <button id="stopBtn">Stop<br><small>S</small></button>
-        <button class="danger-btn" id="resetBtn">Reset<br><small>R</small></button>
+        <button class="danger-btn" id="resetBtn">Reset<small>重新校正計時</small></button>
       </section>
 
       <section class="cards">
@@ -539,8 +524,8 @@
           <div class="v" id="stateMini">待命</div>
         </div>
         <div class="card">
-          <div class="k">下次裂縫</div>
-          <div class="v" id="nextSpawnMini">--</div>
+          <div class="k">黑水區間</div>
+          <div class="v" id="nextSpawnMini">65–85</div>
         </div>
         <div class="card">
           <div class="k">提示音</div>
@@ -579,12 +564,12 @@
     } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
 
     const firebaseConfig = {
-      apiKey: "AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80",
-      authDomain: "more-mss.firebaseapp.com",
-      projectId: "more-mss",
-      storageBucket: "more-mss.firebasestorage.app",
-      messagingSenderId: "424178571978",
-      appId: "1:424178571978:web:68d477d99908281acfb233"
+      apiKey: 'AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80',
+      authDomain: 'more-mss.firebaseapp.com',
+      projectId: 'more-mss',
+      storageBucket: 'more-mss.firebasestorage.app',
+      messagingSenderId: '424178571978',
+      appId: '1:424178571978:web:68d477d99908281acfb233'
     };
 
     const hasFirebaseConfig = !Object.values(firebaseConfig).some(v => String(v).includes('REPLACE_ME'));
@@ -597,9 +582,10 @@
       db = getFirestore(app);
     }
 
-    const CYCLE = 70;
-    const SAFE = 40;
-    const WARN = 20;
+    const MIN_SPAWN = 65;
+    const MAX_SPAWN = 85;
+    const PREWARN = 45;
+    const BLACK_WATER_DURATION = 30;
 
     const hero = document.getElementById('hero');
     const statusText = document.getElementById('statusText');
@@ -616,7 +602,6 @@
 
     const spawnBtn = document.getElementById('spawnBtn');
     const despawnBtn = document.getElementById('despawnBtn');
-    const stopBtn = document.getElementById('stopBtn');
     const resetBtn = document.getElementById('resetBtn');
     const shareUrlInput = document.getElementById('shareUrlInput');
     const shareBtn = document.getElementById('shareBtn');
@@ -633,6 +618,7 @@
 
     let running = false;
     let muted = false;
+    let hasCalibration = false;
     let nextSpawnTarget = 0;
     let timer = null;
     let lastWhole = null;
@@ -686,6 +672,13 @@
       if (state === 'warn' || state === 'danger') hero.classList.add('pulse');
     }
 
+    function setNumberColor(state) {
+      if (state === 'safe') bigNumber.style.color = '#22c55e';
+      else if (state === 'warn') bigNumber.style.color = '#f59e0b';
+      else if (state === 'danger') bigNumber.style.color = '#ef4444';
+      else bigNumber.style.color = '#2a3350';
+    }
+
     function updateSoundUI() {
       soundMini.textContent = muted ? 'OFF' : 'ON';
     }
@@ -711,65 +704,36 @@
       roomMini.textContent = roomId || '未連線';
       roomInput.value = roomId;
       updateShareUrl();
-      metaText.textContent = roomId ? `房間：${roomId}` : 'Space / Ctrl / S / R / M';
+      metaText.textContent = roomId ? `房間：${roomId}` : 'Space / Ctrl / R / M';
+    }
+
+    function clearTimer() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      running = false;
     }
 
     function resetDisplay() {
+      clearTimer();
+      hasCalibration = false;
       statusText.textContent = viewerMode ? '觀看模式' : '待命';
       bigNumber.textContent = '--';
       bigLabel.textContent = viewerMode ? '等待房主操作' : '按下 Spawn 或 Despawn';
-      hintText.textContent = viewerMode ? '同步等待中' : 'Space = 黑水出現 ・ Ctrl = 黑水消失';
+      hintText.textContent = viewerMode ? '同步等待中' : 'Space = 黑水出現 ・ Ctrl = 黑水消失 ・ 65–85 秒區間為隨時可能出現';
       hero.style.borderColor = 'rgba(122, 134, 170, .14)';
       stateMini.textContent = viewerMode ? '等待' : '待命';
-      nextSpawnMini.textContent = '--';
+      nextSpawnMini.textContent = '65–85';
       setClass('safe');
+      setNumberColor('idle');
       barFill.style.width = '0%';
       lastWhole = null;
       lastPhase = 'idle';
-      running = false;
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-    }
-
-    function stopTimer(localOnly = false) {
-      running = false;
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-      statusText.textContent = '已停止';
-      bigNumber.textContent = '--';
-      bigLabel.textContent = '已停止';
-      hintText.textContent = '可重新開始計時';
-      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-      stateMini.textContent = '已停止';
-      nextSpawnMini.textContent = '--';
-      setClass('safe');
-      barFill.style.width = '0%';
-      lastWhole = null;
-      lastPhase = 'idle';
-      if (!localOnly) publishEvent('stop');
     }
 
     function resetTimer(localOnly = false) {
-      running = false;
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-      statusText.textContent = viewerMode ? '觀看模式' : '待命';
-      bigNumber.textContent = '--';
-      bigLabel.textContent = viewerMode ? '等待房主操作' : '按下 Spawn 或 Despawn';
-      hintText.textContent = viewerMode ? '同步等待中' : 'Space = 黑水出現 ・ Ctrl = 黑水消失';
-      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-      stateMini.textContent = viewerMode ? '等待' : '待命';
-      nextSpawnMini.textContent = '--';
-      setClass('safe');
-      barFill.style.width = '0%';
-      lastWhole = null;
-      lastPhase = 'idle';
+      resetDisplay();
       if (!localOnly) publishEvent('reset');
     }
 
@@ -782,6 +746,7 @@
     function startTimerWithDuration(durationSec, phaseSeed) {
       nextSpawnTarget = performance.now() + (durationSec * 1000);
       running = true;
+      hasCalibration = true;
       lastWhole = null;
       lastPhase = phaseSeed;
       render();
@@ -790,91 +755,91 @@
 
     function calibrateFromSpawn(localOnly = false) {
       if (viewerMode && !localOnly) return;
-      startTimerWithDuration(CYCLE, 'danger');
+      startTimerWithDuration(MAX_SPAWN, 'safe');
       beep('spawn');
-      if (!localOnly) publishEvent('spawn', CYCLE);
+      if (!localOnly) publishEvent('spawn', MAX_SPAWN);
     }
 
     function calibrateFromDespawn(localOnly = false) {
       if (viewerMode && !localOnly) return;
-      startTimerWithDuration(SAFE, 'safe');
+      startTimerWithDuration(MAX_SPAWN - BLACK_WATER_DURATION, 'safe');
       beep('short');
-      if (!localOnly) publishEvent('despawn', SAFE);
+      if (!localOnly) publishEvent('despawn', MAX_SPAWN - BLACK_WATER_DURATION);
     }
 
     function render() {
-      if (!running) return;
+      if (!running || !hasCalibration) return;
 
       const now = performance.now();
       const remaining = Math.max(0, (nextSpawnTarget - now) / 1000);
-      const whole = Math.ceil(remaining);
-      const progress = Math.min(1, (CYCLE - Math.min(CYCLE, remaining)) / CYCLE) * 100;
+      const elapsedFromAnchor = Math.max(0, MAX_SPAWN - remaining);
+      const minWindowRemaining = Math.max(0, MIN_SPAWN - elapsedFromAnchor);
+      const maxWindowRemaining = Math.max(0, MAX_SPAWN - elapsedFromAnchor);
+      const progress = Math.min(100, (elapsedFromAnchor / MAX_SPAWN) * 100);
+      const whole = Math.ceil(maxWindowRemaining);
+
       barFill.style.width = `${progress}%`;
       hero.classList.remove('critical');
 
-      if (remaining > SAFE) {
-        const activeRemain = remaining - SAFE;
-        setClass('danger');
-        statusText.textContent = '黑水中';
-        bigNumber.textContent = Math.ceil(activeRemain);
-        bigLabel.textContent = '時空裂縫持續中';
-        hintText.textContent = '注意走位';
-        hero.style.borderColor = 'rgba(75, 70, 217, .18)';
-        stateMini.textContent = '黑水中';
-        nextSpawnMini.textContent = fmt(remaining);
-        if (lastPhase !== 'danger') {
-          beep('spawn');
-          lastPhase = 'danger';
-        }
-      } else if (remaining <= WARN) {
+      if (elapsedFromAnchor < PREWARN) {
+        setClass('safe');
+        setNumberColor('safe');
+        statusText.textContent = '安全期';
+        bigNumber.textContent = Math.ceil(PREWARN - elapsedFromAnchor);
+        bigLabel.textContent = '距離預警還有';
+        hintText.textContent = '先正常輸出，尚未進入黑水高風險時段';
+        hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+        stateMini.textContent = '安全';
+        nextSpawnMini.textContent = `${Math.ceil(minWindowRemaining)}–${Math.ceil(maxWindowRemaining)}`;
+        lastPhase = 'safe';
+      } else if (elapsedFromAnchor < MIN_SPAWN) {
         setClass('warn');
-        statusText.textContent = '即將生成';
-        bigNumber.textContent = Math.ceil(remaining);
-        if (whole <= 2) hero.classList.add('critical');
-        bigLabel.textContent = '距離下次時空裂縫';
-        hintText.textContent = remaining <= 5 ? '準備提醒隊友' : '20 秒預警';
-        hero.style.borderColor = 'rgba(255,159,26,.28)';
+        setNumberColor('warn');
+        statusText.textContent = '預警期';
+        bigNumber.textContent = Math.ceil(MIN_SPAWN - elapsedFromAnchor);
+        bigLabel.textContent = '距離最早黑水';
+        hintText.textContent = '開始提醒隊友，黑水快進入浮動區間';
+        hero.style.borderColor = 'rgba(245,158,11,.30)';
         stateMini.textContent = '預警';
-        nextSpawnMini.textContent = fmt(remaining);
+        nextSpawnMini.textContent = `${Math.ceil(minWindowRemaining)}–${Math.ceil(maxWindowRemaining)}`;
         if (lastPhase !== 'warn') {
           beep('warn');
           lastPhase = 'warn';
         }
-        if (whole !== lastWhole) {
-          if (whole <= 2) {
-            hero.classList.add('critical');
-            beep('warn');
-          } else if (whole <= 5) beep('warn');
-          else beep('short');
+      } else if (elapsedFromAnchor <= MAX_SPAWN) {
+        setClass('danger');
+        setNumberColor('danger');
+        statusText.textContent = '⚠ 黑水可能隨時出現';
+        bigNumber.textContent = Math.ceil(maxWindowRemaining);
+        bigLabel.textContent = '黑水高風險區間';
+        hintText.textContent = '65–85 秒內隨時可能生成黑水！請高度注意並準備報水';
+        hero.style.borderColor = 'rgba(255,60,60,.45)';
+        stateMini.textContent = '黑水區';
+        nextSpawnMini.textContent = `0–${Math.ceil(maxWindowRemaining)}`;
+        if (whole <= 3) hero.classList.add('critical');
+        if (lastPhase !== 'danger') {
+          beep('spawn');
+          lastPhase = 'danger';
         }
-      } else {
-        setClass('safe');
-        statusText.textContent = '倒數中';
-        bigNumber.textContent = Math.ceil(remaining);
-        bigLabel.textContent = '距離下次時空裂縫';
-        hintText.textContent = '持續倒數中';
-        hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-        stateMini.textContent = '倒數';
-        nextSpawnMini.textContent = fmt(remaining);
-        lastPhase = 'safe';
+        if (whole !== lastWhole && whole <= 5) {
+          beep('warn');
+        }
       }
 
       lastWhole = whole;
 
       if (remaining <= 0) {
-        running = false;
-        if (timer) {
-          clearInterval(timer);
-          timer = null;
-        }
+        clearTimer();
+        hero.classList.add('critical');
         setClass('danger');
-        statusText.textContent = '已生成';
+        setNumberColor('danger');
+        statusText.textContent = '超過 85 秒';
         bigNumber.textContent = '0';
-        bigLabel.textContent = '請重新校正';
-        hintText.textContent = '看到黑水後請再按一次 Spawn';
+        bigLabel.textContent = '請手動校正';
+        hintText.textContent = '若黑水已出現請按 Spawn，若已消失請按 Despawn';
         hero.style.borderColor = 'rgba(255,77,109,.26)';
-        stateMini.textContent = '已生成';
-        nextSpawnMini.textContent = '0.0s';
+        stateMini.textContent = '超時';
+        nextSpawnMini.textContent = '超時';
         lastPhase = 'idle';
       }
     }
@@ -902,8 +867,6 @@
         calibrateFromSpawn(true);
       } else if (data.type === 'despawn') {
         calibrateFromDespawn(true);
-      } else if (data.type === 'stop') {
-        stopTimer(true);
       } else if (data.type === 'reset') {
         resetTimer(true);
       }
@@ -966,9 +929,16 @@
       }
     }
 
+    function runSelfTests() {
+      console.assert(MIN_SPAWN < MAX_SPAWN, 'MIN_SPAWN must be less than MAX_SPAWN');
+      console.assert(PREWARN < MIN_SPAWN, 'PREWARN must be less than MIN_SPAWN');
+      console.assert(BLACK_WATER_DURATION > 0, 'BLACK_WATER_DURATION must be positive');
+      console.assert(sanitizeRoomId('Lotus Team A') === 'lotus-team-a', 'sanitizeRoomId should normalize room names');
+      console.assert(fmt(12.34) === '12.3s', 'fmt should format seconds to 1 decimal place');
+    }
+
     spawnBtn.addEventListener('click', () => calibrateFromSpawn(false));
     despawnBtn.addEventListener('click', () => calibrateFromDespawn(false));
-    stopBtn.addEventListener('click', () => stopTimer(false));
     resetBtn.addEventListener('click', () => resetTimer(false));
     soundMini.addEventListener('click', toggleMute);
     shareBtn.addEventListener('click', copyShareUrl);
@@ -985,13 +955,12 @@
         calibrateFromDespawn(false);
       } else if (e.key === 'r' || e.key === 'R') {
         resetTimer(false);
-      } else if (e.key === 's' || e.key === 'S') {
-        stopTimer(false);
       } else if (e.key === 'm' || e.key === 'M') {
         toggleMute();
       }
     });
 
+    runSelfTests();
     updateSoundUI();
     setRoomUI();
     setSyncState(hasFirebaseConfig ? 'Sync ready' : '請先填入 Firebase 設定', !hasFirebaseConfig);
