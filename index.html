@@ -520,7 +520,7 @@
           <div class="label" id="bigLabel">按下 Spawn 或 Despawn</div>
         </div>
 
-        <div class="hint" id="hintText">Space = 黑水出現 ・ Ctrl = 黑水消失 ・ 65–85 秒區間為「隨時可能出現」</div>
+        <div class="hint" id="hintText">F7 = 黑水出現 ・ F9 = 黑水消失 ・ F8 = 重置 ・ 65–85 秒區間為「隨時可能出現」</div>
 
         <div class="bar-wrap">
           <div class="bar">
@@ -609,7 +609,7 @@
     const MAX_SPAWN = 85;
     const PREWARN = 45;
     const BLACK_WATER_DURATION = 30;
-    const FINAL_WARNING_SECONDS = 5;
+    const FINAL_WARNING_SECONDS = 10;
 
     const hero = document.getElementById('hero');
     const statusText = document.getElementById('statusText');
@@ -875,7 +875,7 @@ let lastWarningSecond = null;
         const secondsLeft = Math.ceil(MIN_SPAWN - elapsedFromAnchor);
         if (secondsLeft <= FINAL_WARNING_SECONDS) {
           if (lastWarningSecond !== secondsLeft) {
-            tone(1200, 140, 0.2);
+            tone(1300, 180, 0.25);
             lastWarningSecond = secondsLeft;
           }
           bigNumber.classList.add('jump');
@@ -1031,12 +1031,14 @@ let lastWarningSecond = null;
     window.addEventListener('keydown', (e) => {
       if (viewerMode) return;
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-      if (e.code === 'Space') {
+      if (e.key === 'F7') {
         e.preventDefault();
         calibrateFromSpawn(false);
-      } else if (e.key === 'Control') {
+      } else if (e.key === 'F9') {
+        e.preventDefault();
         calibrateFromDespawn(false);
-      } else if (e.key === 'r' || e.key === 'R') {
+      } else if (e.key === 'F8') {
+        e.preventDefault();
         resetTimer(false);
       } else if (e.key === 'm' || e.key === 'M') {
         toggleMute();
