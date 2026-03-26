@@ -576,326 +576,334 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
-    import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+  import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
 
-    const firebaseConfig = {
-      apiKey: 'AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80',
-      authDomain: 'more-mss.firebaseapp.com',
-      projectId: 'more-mss',
-      storageBucket: 'more-mss.firebasestorage.app',
-      messagingSenderId: '424178571978',
-      appId: '1:424178571978:web:68d477d99908281acfb233'
+  const firebaseConfig = {
+    apiKey: 'AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80',
+    authDomain: 'more-mss.firebaseapp.com',
+    projectId: 'more-mss',
+    storageBucket: 'more-mss.firebasestorage.app',
+    messagingSenderId: '424178571978',
+    appId: '1:424178571978:web:68d477d99908281acfb233'
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const MIN_SPAWN = 65;
+  const MAX_SPAWN = 85;
+  const PREWARN = 45;
+  const FINAL_WARNING_SECONDS = 10;
+  const BLACK_WATER_DURATION = 30;
+
+  const hero = document.getElementById('hero');
+  const statusText = document.getElementById('statusText');
+  const bigNumber = document.getElementById('bigNumber');
+  const bigLabel = document.getElementById('bigLabel');
+  const hintText = document.getElementById('hintText');
+  const barFill = document.getElementById('barFill');
+  const metaText = document.getElementById('metaText');
+  const stateMini = document.getElementById('stateMini');
+  const nextSpawnMini = document.getElementById('nextSpawnMini');
+  const soundMini = document.getElementById('soundMini');
+  const roomMini = document.getElementById('roomMini');
+  const spawnBtn = document.getElementById('spawnBtn');
+  const despawnBtn = document.getElementById('despawnBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const shareUrlInput = document.getElementById('shareUrlInput');
+  const shareBtn = document.getElementById('shareBtn');
+  const viewerBanner = document.getElementById('viewerBanner');
+  const syncBanner = document.getElementById('syncBanner');
+  const syncStateBadge = document.getElementById('syncStateBadge');
+  const roomInput = document.getElementById('roomInput');
+  const joinRoomBtn = document.getElementById('joinRoomBtn');
+  const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+
+  const params = new URLSearchParams(window.location.search);
+  const viewerMode = params.get('viewer') === '1';
+  const roomFromUrl = params.get('room') || '';
+
+  let running = false;
+  let muted = false;
+  let hasCalibration = false;
+  let nextSpawnTarget = 0;
+  let timer = null;
+  let audioCtx = null;
+  let roomId = '';
+  let unsubscribeRoom = null;
+  let lastRemoteEventId = '';
+  let lastWarningSecond = null;
+  let dangerAlertPlayed = false;
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function tone(freq, durationMs = 150, volume = 0.25) {
+    if (muted || viewerMode) return;
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
+      osc.start(now);
+      osc.stop(now + durationMs / 1000 + 0.02);
+    } catch (e) {
+      console.warn('Audio unavailable', e);
+    }
+  }
+
+  function beep(type = 'short') {
+    if (type === 'spawn') tone(700, 240, 0.2);
+    else if (type === 'warn') tone(1300, 180, 0.3);
+    else tone(950, 120, 0.18);
+  }
+
+  function setClass(state) {
+    hero.classList.remove('safe', 'warn', 'danger', 'critical', 'pulse', 'shake-once');
+    hero.classList.add(state);
+    if (state === 'warn' || state === 'danger') hero.classList.add('pulse');
+  }
+
+  function setNumberColor(state) {
+    if (state === 'safe') bigNumber.style.color = '#22c55e';
+    else if (state === 'warn') bigNumber.style.color = '#f59e0b';
+    else if (state === 'danger') bigNumber.style.color = '#ef4444';
+    else bigNumber.style.color = '#2a3350';
+  }
+
+  function updateSoundUI() {
+    soundMini.textContent = muted ? 'OFF' : 'ON';
+  }
+
+  function updateShareUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('viewer', '1');
+    if (roomId) url.searchParams.set('room', roomId);
+    shareUrlInput.value = url.toString();
+  }
+
+  function setSyncState(text, showBanner = false) {
+    syncStateBadge.textContent = text;
+    syncBanner.textContent = text;
+    syncBanner.classList.toggle('show', showBanner);
+  }
+
+  function sanitizeRoomId(raw) {
+    return raw.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').slice(0, 40);
+  }
+
+  function setRoomUI() {
+    roomMini.textContent = roomId || '未連線';
+    roomInput.value = roomId;
+    updateShareUrl();
+    metaText.textContent = roomId ? `房間：${roomId}` : 'F7 / F9 / F8 / M';
+  }
+
+  function clearTimer() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    running = false;
+    lastWarningSecond = null;
+    bigNumber.classList.remove('jump');
+  }
+
+  function resetDisplay() {
+    clearTimer();
+    hasCalibration = false;
+    dangerAlertPlayed = false;
+    setClass('safe');
+    setNumberColor('idle');
+    statusText.textContent = viewerMode ? '觀看模式' : '待命';
+    bigNumber.textContent = '--';
+    bigLabel.textContent = viewerMode ? '等待房主操作' : '按 F7 / F9 開始';
+    hintText.textContent = viewerMode ? '同步等待中' : 'F7 = 黑水出現 ・ F9 = 黑水消失 ・ F8 = 重置 ・ 65–85 秒區間為「隨時可能出現」';
+    stateMini.textContent = viewerMode ? '等待' : '待命';
+    nextSpawnMini.textContent = '65–85';
+    barFill.style.width = '0%';
+    hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+  }
+
+  async function resetTimer(localOnly = false) {
+    resetDisplay();
+    if (!localOnly) {
+      await publishEvent('reset', 0);
+    }
+  }
+
+  function startTimer(durationSec) {
+    nextSpawnTarget = performance.now() + durationSec * 1000;
+    running = true;
+    hasCalibration = true;
+    dangerAlertPlayed = false;
+    lastWarningSecond = null;
+    bigNumber.classList.remove('jump');
+    if (!timer) timer = setInterval(render, 100);
+    render();
+  }
+
+  async function calibrateFromSpawn(localOnly = false) {
+    if (viewerMode && !localOnly) return;
+    startTimer(MAX_SPAWN);
+    beep('spawn');
+    if (!localOnly) {
+      await publishEvent('spawn', MAX_SPAWN);
+    }
+  }
+
+  async function calibrateFromDespawn(localOnly = false) {
+    if (viewerMode && !localOnly) return;
+    startTimer(MAX_SPAWN - BLACK_WATER_DURATION);
+    tone(900, 140, 0.2);
+    if (!localOnly) {
+      await publishEvent('despawn', MAX_SPAWN - BLACK_WATER_DURATION);
+    }
+  }
+
+  function render() {
+    if (!running || !hasCalibration) return;
+
+    const remaining = Math.max(0, (nextSpawnTarget - performance.now()) / 1000);
+    const elapsed = MAX_SPAWN - remaining;
+    const progress = Math.min(100, (elapsed / MAX_SPAWN) * 100);
+    barFill.style.width = `${progress}%`;
+    bigNumber.classList.remove('jump');
+
+    if (elapsed < PREWARN) {
+      setClass('safe');
+      setNumberColor('safe');
+      statusText.textContent = '安全期';
+      bigNumber.textContent = Math.ceil(PREWARN - elapsed);
+      bigLabel.textContent = '距離預警還有';
+      hintText.textContent = '先正常輸出，尚未進入黑水高風險時段';
+      stateMini.textContent = '安全';
+      nextSpawnMini.textContent = `${Math.ceil(Math.max(0, MIN_SPAWN - elapsed))}–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
+      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
+      lastWarningSecond = null;
+    } else if (elapsed < MIN_SPAWN) {
+      setClass('warn');
+      setNumberColor('warn');
+      statusText.textContent = '預警期';
+      const sec = Math.ceil(MIN_SPAWN - elapsed);
+      bigNumber.textContent = sec;
+      bigLabel.textContent = '距離最早黑水';
+      hintText.textContent = '開始提醒隊友，黑水快進入浮動區間';
+      stateMini.textContent = '預警';
+      nextSpawnMini.textContent = `${sec}–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
+      hero.style.borderColor = 'rgba(245,158,11,.30)';
+
+      if (sec <= FINAL_WARNING_SECONDS && lastWarningSecond !== sec) {
+        beep('warn');
+        lastWarningSecond = sec;
+      }
+      if (sec <= FINAL_WARNING_SECONDS) {
+        bigNumber.classList.add('jump');
+      }
+    } else {
+      setClass('danger');
+      setNumberColor('danger');
+      statusText.textContent = '黑水可能出現';
+      bigNumber.textContent = Math.ceil(Math.max(0, MAX_SPAWN - elapsed));
+      bigLabel.textContent = '黑水高風險區間';
+      hintText.textContent = '65–85 秒區間內隨時可能出現，請持續注意';
+      stateMini.textContent = '黑水區';
+      nextSpawnMini.textContent = `0–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
+      hero.style.borderColor = 'rgba(255,60,60,.45)';
+
+      if (!dangerAlertPlayed) {
+        dangerAlertPlayed = true;
+        tone(1100, 140, 0.22);
+        setTimeout(() => tone(1100, 140, 0.22), 180);
+        hero.classList.add('shake-once');
+      }
+    }
+
+    if (remaining <= 0) {
+      clearTimer();
+      setClass('danger');
+      setNumberColor('danger');
+      statusText.textContent = '超過 85 秒';
+      bigNumber.textContent = '0';
+      bigLabel.textContent = '請手動校正';
+      hintText.textContent = '若黑水已出現請按 F7，若已消失請按 F9';
+      stateMini.textContent = '超時';
+      nextSpawnMini.textContent = '超時';
+    }
+  }
+
+  async function publishEvent(type, duration = 0) {
+    if (!db || !roomId || viewerMode) return;
+    const eventId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      roomId,
+      type,
+      duration,
+      eventId,
+      emittedAt: Date.now(),
+      updatedAt: serverTimestamp()
     };
 
-    const hasFirebaseConfig = !Object.values(firebaseConfig).some(v => String(v).includes('REPLACE_ME'));
-    let db = null;
-    if (hasFirebaseConfig) {
-      const app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
+    lastRemoteEventId = eventId;
+    console.log('[publishEvent]', payload);
+    try {
+      await setDoc(doc(db, 'timeRiftRooms', roomId), payload, { merge: true });
+      console.log('[publishEvent:success]', roomId, type);
+    } catch (error) {
+      console.error('[publishEvent:error]', error);
+      setSyncState('寫入失敗，請檢查權限或重新連線', true);
+      throw error;
+    }
+  }
+
+  function applyRemoteEvent(data) {
+    if (!data || !data.type) return;
+    if (data.eventId && data.eventId === lastRemoteEventId) return;
+    lastRemoteEventId = data.eventId || '';
+
+    console.log('[applyRemoteEvent]', data);
+
+    if (data.type === 'spawn') {
+      calibrateFromSpawn(true);
+    } else if (data.type === 'despawn') {
+      calibrateFromDespawn(true);
+    } else if (data.type === 'reset') {
+      resetTimer(true);
+    } else if (data.type === 'idle') {
+      setSyncState(viewerMode ? `Viewer synced: ${data.roomId || roomId}` : `Host synced: ${data.roomId || roomId}`, true);
+    }
+  }
+
+  async function joinRoom() {
+    const nextRoom = sanitizeRoomId(roomInput.value || roomFromUrl || 'default-room');
+    if (!nextRoom) {
+      setSyncState('請輸入有效房號', true);
+      return;
     }
 
-    const MIN_SPAWN = 65;
-    const MAX_SPAWN = 85;
-    const PREWARN = 45;
-    const FINAL_WARNING_SECONDS = 10;
-    const BLACK_WATER_DURATION = 30;
-
-    const hero = document.getElementById('hero');
-    const statusText = document.getElementById('statusText');
-    const bigNumber = document.getElementById('bigNumber');
-    const bigLabel = document.getElementById('bigLabel');
-    const hintText = document.getElementById('hintText');
-    const barFill = document.getElementById('barFill');
-    const metaText = document.getElementById('metaText');
-    const stateMini = document.getElementById('stateMini');
-    const nextSpawnMini = document.getElementById('nextSpawnMini');
-    const soundMini = document.getElementById('soundMini');
-    const roomMini = document.getElementById('roomMini');
-    const spawnBtn = document.getElementById('spawnBtn');
-    const despawnBtn = document.getElementById('despawnBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const shareUrlInput = document.getElementById('shareUrlInput');
-    const shareBtn = document.getElementById('shareBtn');
-    const viewerBanner = document.getElementById('viewerBanner');
-    const syncBanner = document.getElementById('syncBanner');
-    const syncStateBadge = document.getElementById('syncStateBadge');
-    const roomInput = document.getElementById('roomInput');
-    const joinRoomBtn = document.getElementById('joinRoomBtn');
-    const leaveRoomBtn = document.getElementById('leaveRoomBtn');
-
-    const params = new URLSearchParams(window.location.search);
-    const viewerMode = params.get('viewer') === '1';
-    const roomFromUrl = params.get('room') || '';
-
-    let running = false;
-    let muted = false;
-    let hasCalibration = false;
-    let nextSpawnTarget = 0;
-    let timer = null;
-    let audioCtx = null;
-    let roomId = '';
-    let unsubscribeRoom = null;
-    let lastRemoteEventId = '';
-    let lastWarningSecond = null;
-    let dangerAlertPlayed = false;
-
-    function getAudioCtx() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      return audioCtx;
+    if (unsubscribeRoom) {
+      unsubscribeRoom();
+      unsubscribeRoom = null;
     }
 
-    function tone(freq, durationMs = 150, volume = 0.25) {
-      if (muted || viewerMode) return;
-      try {
-        const ctx = getAudioCtx();
-        if (ctx.state === 'suspended') ctx.resume();
-        const now = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.value = freq;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
-        osc.start(now);
-        osc.stop(now + durationMs / 1000 + 0.02);
-      } catch (e) {
-        console.warn('Audio unavailable', e);
-      }
-    }
+    roomId = nextRoom;
+    setRoomUI();
 
-    function beep(type = 'short') {
-      if (type === 'spawn') tone(700, 240, 0.2);
-      else if (type === 'warn') tone(1300, 180, 0.3);
-      else tone(950, 120, 0.18);
-    }
-
-    function setClass(state) {
-      hero.classList.remove('safe', 'warn', 'danger', 'critical', 'pulse', 'shake-once');
-      hero.classList.add(state);
-      if (state === 'warn' || state === 'danger') hero.classList.add('pulse');
-    }
-
-    function setNumberColor(state) {
-      if (state === 'safe') bigNumber.style.color = '#22c55e';
-      else if (state === 'warn') bigNumber.style.color = '#f59e0b';
-      else if (state === 'danger') bigNumber.style.color = '#ef4444';
-      else bigNumber.style.color = '#2a3350';
-    }
-
-    function updateSoundUI() {
-      soundMini.textContent = muted ? 'OFF' : 'ON';
-    }
-
-    function updateShareUrl() {
-      const url = new URL(window.location.href);
-      url.searchParams.set('viewer', '1');
-      if (roomId) url.searchParams.set('room', roomId);
-      shareUrlInput.value = url.toString();
-    }
-
-    function setSyncState(text, showBanner = false) {
-      syncStateBadge.textContent = text;
-      syncBanner.textContent = text;
-      syncBanner.classList.toggle('show', showBanner);
-    }
-
-    function sanitizeRoomId(raw) {
-      return raw.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').slice(0, 40);
-    }
-
-    function setRoomUI() {
-      roomMini.textContent = roomId || '未連線';
-      roomInput.value = roomId;
-      updateShareUrl();
-      metaText.textContent = roomId ? `房間：${roomId}` : 'F7 / F9 / F8 / M';
-    }
-
-    function clearTimer() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-      running = false;
-      lastWarningSecond = null;
-      bigNumber.classList.remove('jump');
-    }
-
-    function resetDisplay() {
-      clearTimer();
-      hasCalibration = false;
-      dangerAlertPlayed = false;
-      setClass('safe');
-      setNumberColor('idle');
-      statusText.textContent = viewerMode ? '觀看模式' : '待命';
-      bigNumber.textContent = '--';
-      bigLabel.textContent = viewerMode ? '等待房主操作' : '按 F7 / F9 開始';
-      hintText.textContent = viewerMode ? '同步等待中' : 'F7 = 黑水出現 ・ F9 = 黑水消失 ・ F8 = 重置 ・ 65–85 秒區間為「隨時可能出現」';
-      stateMini.textContent = viewerMode ? '等待' : '待命';
-      nextSpawnMini.textContent = '65–85';
-      barFill.style.width = '0%';
-      hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-    }
-
-    function resetTimer(localOnly = false) {
-      resetDisplay();
-      if (!localOnly) publishEvent('reset');
-    }
-
-    function startTimer(durationSec) {
-      nextSpawnTarget = performance.now() + durationSec * 1000;
-      running = true;
-      hasCalibration = true;
-      dangerAlertPlayed = false;
-      lastWarningSecond = null;
-      bigNumber.classList.remove('jump');
-      if (!timer) timer = setInterval(render, 100);
-      render();
-    }
-
-    function calibrateFromSpawn(localOnly = false) {
-      if (viewerMode && !localOnly) return;
-      startTimer(MAX_SPAWN);
-      beep('spawn');
-      if (!localOnly) publishEvent('spawn', MAX_SPAWN);
-    }
-
-    function calibrateFromDespawn(localOnly = false) {
-      if (viewerMode && !localOnly) return;
-      startTimer(MAX_SPAWN - BLACK_WATER_DURATION);
-      tone(900, 140, 0.2);
-      if (!localOnly) publishEvent('despawn', MAX_SPAWN - BLACK_WATER_DURATION);
-    }
-
-    function render() {
-      if (!running || !hasCalibration) return;
-
-      const remaining = Math.max(0, (nextSpawnTarget - performance.now()) / 1000);
-      const elapsed = MAX_SPAWN - remaining;
-      const progress = Math.min(100, (elapsed / MAX_SPAWN) * 100);
-      barFill.style.width = `${progress}%`;
-      bigNumber.classList.remove('jump');
-
-      if (elapsed < PREWARN) {
-        setClass('safe');
-        setNumberColor('safe');
-        statusText.textContent = '安全期';
-        bigNumber.textContent = Math.ceil(PREWARN - elapsed);
-        bigLabel.textContent = '距離預警還有';
-        hintText.textContent = '先正常輸出，尚未進入黑水高風險時段';
-        stateMini.textContent = '安全';
-        nextSpawnMini.textContent = `${Math.ceil(Math.max(0, MIN_SPAWN - elapsed))}–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
-        hero.style.borderColor = 'rgba(122, 134, 170, .14)';
-        lastWarningSecond = null;
-      } else if (elapsed < MIN_SPAWN) {
-        setClass('warn');
-        setNumberColor('warn');
-        statusText.textContent = '預警期';
-        const sec = Math.ceil(MIN_SPAWN - elapsed);
-        bigNumber.textContent = sec;
-        bigLabel.textContent = '距離最早黑水';
-        hintText.textContent = '開始提醒隊友，黑水快進入浮動區間';
-        stateMini.textContent = '預警';
-        nextSpawnMini.textContent = `${sec}–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
-        hero.style.borderColor = 'rgba(245,158,11,.30)';
-
-        if (sec <= FINAL_WARNING_SECONDS && lastWarningSecond !== sec) {
-          beep('warn');
-          lastWarningSecond = sec;
-        }
-        if (sec <= FINAL_WARNING_SECONDS) {
-          bigNumber.classList.add('jump');
-        }
-      } else {
-        setClass('danger');
-        setNumberColor('danger');
-        statusText.textContent = '黑水可能出現';
-        bigNumber.textContent = Math.ceil(Math.max(0, MAX_SPAWN - elapsed));
-        bigLabel.textContent = '黑水高風險區間';
-        hintText.textContent = '65–85 秒區間內隨時可能出現，請持續注意';
-        stateMini.textContent = '黑水區';
-        nextSpawnMini.textContent = `0–${Math.ceil(Math.max(0, MAX_SPAWN - elapsed))}`;
-        hero.style.borderColor = 'rgba(255,60,60,.45)';
-
-        if (!dangerAlertPlayed) {
-          dangerAlertPlayed = true;
-          tone(1100, 140, 0.22);
-          setTimeout(() => tone(1100, 140, 0.22), 180);
-          hero.classList.add('shake-once');
-        }
-      }
-
-      if (remaining <= 0) {
-        clearTimer();
-        setClass('danger');
-        setNumberColor('danger');
-        statusText.textContent = '超過 85 秒';
-        bigNumber.textContent = '0';
-        bigLabel.textContent = '請手動校正';
-        hintText.textContent = '若黑水已出現請按 F7，若已消失請按 F9';
-        stateMini.textContent = '超時';
-        nextSpawnMini.textContent = '超時';
-      }
-    }
-
-    async function publishEvent(type, duration = null) {
-      if (!db || !roomId || viewerMode) return;
-      const eventId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      lastRemoteEventId = eventId;
-      await setDoc(doc(db, 'timeRiftRooms', roomId), {
-        roomId,
-        type,
-        duration,
-        eventId,
-        emittedAt: Date.now(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    }
-
-    function applyRemoteEvent(data) {
-      if (!data || !data.type) return;
-      if (data.eventId && data.eventId === lastRemoteEventId) return;
-      lastRemoteEventId = data.eventId || '';
-
-      if (data.type === 'spawn') {
-        calibrateFromSpawn(true);
-      } else if (data.type === 'despawn') {
-        calibrateFromDespawn(true);
-      } else if (data.type === 'reset') {
-        resetTimer(true);
-      } else if (data.type === 'idle') {
-        // 房間剛建立或重新連線時，不強制啟動計時，只維持同步存在
-        setSyncState(viewerMode ? `Viewer synced: ${data.roomId || roomId}` : `Host synced: ${data.roomId || roomId}`, true);
-      }
-    }
-
-    async function joinRoom() {
-      if (!hasFirebaseConfig) {
-        setSyncState('請先填入 Firebase 設定', true);
-        return;
-      }
-      const nextRoom = sanitizeRoomId(roomInput.value || roomFromUrl || 'default-room');
-      if (!nextRoom) {
-        setSyncState('請輸入有效房號', true);
-        return;
-      }
-
-      if (unsubscribeRoom) {
-        unsubscribeRoom();
-        unsubscribeRoom = null;
-      }
-
-      roomId = nextRoom;
-      setRoomUI();
-
-      const roomRef = doc(db, 'timeRiftRooms', roomId);
-
-      // 連線當下先建立房間文件，避免刪房後重新加入卻沒有監聽目標
+    const roomRef = doc(db, 'timeRiftRooms', roomId);
+    try {
       await setDoc(roomRef, {
         roomId,
         type: 'idle',
@@ -904,102 +912,109 @@
         emittedAt: Date.now(),
         updatedAt: serverTimestamp()
       }, { merge: true });
-
-      unsubscribeRoom = onSnapshot(roomRef, (snap) => {
-        if (!snap.exists()) return;
-        applyRemoteEvent(snap.data());
-      }, (error) => {
-        console.error('onSnapshot error:', error);
-        setSyncState('同步監聽失敗，請檢查權限或重新連線', true);
-      });
-
-      setSyncState(viewerMode ? `Viewer synced: ${roomId}` : `Host synced: ${roomId}`, true);
+      console.log('[joinRoom:created]', roomId);
+    } catch (error) {
+      console.error('[joinRoom:error]', error);
+      setSyncState('建立房間失敗，請檢查權限', true);
+      return;
     }
 
-    async function leaveRoom() {
-      if (unsubscribeRoom) {
-        unsubscribeRoom();
-        unsubscribeRoom = null;
+    unsubscribeRoom = onSnapshot(roomRef, (snap) => {
+      if (!snap.exists()) {
+        console.warn('[onSnapshot] room missing', roomId);
+        return;
       }
-
-      // 只離開監聽，不刪除房間文件；避免其他 viewer 或 host 重新進房時失去同步目標
-      roomId = '';
-      setRoomUI();
-      setSyncState('Sync idle', false);
-      resetDisplay();
-    }
-
-    async function copyShareUrl() {
-      const url = shareUrlInput.value;
-      try {
-        await navigator.clipboard.writeText(url);
-        shareBtn.innerHTML = '已複製<small>貼給隊友即可</small>';
-        setTimeout(() => {
-          shareBtn.innerHTML = '分享觀看網址<small>viewer only</small>';
-        }, 1800);
-      } catch (err) {
-        shareUrlInput.focus();
-        shareUrlInput.select();
-      }
-    }
-
-    function toggleMute() {
-      if (viewerMode) return;
-      muted = !muted;
-      updateSoundUI();
-    }
-
-    function runSelfTests() {
-      console.assert(MIN_SPAWN < MAX_SPAWN, 'MIN_SPAWN must be less than MAX_SPAWN');
-      console.assert(PREWARN < MIN_SPAWN, 'PREWARN must be less than MIN_SPAWN');
-      console.assert(FINAL_WARNING_SECONDS <= 10, 'FINAL_WARNING_SECONDS should be 10 or less');
-      console.assert(sanitizeRoomId('Lotus Team A') === 'lotus-team-a', 'sanitizeRoomId should normalize names');
-    }
-
-    spawnBtn.addEventListener('click', calibrateFromSpawn);
-    despawnBtn.addEventListener('click', calibrateFromDespawn);
-    resetBtn.addEventListener('click', resetTimer);
-    soundMini.addEventListener('click', toggleMute);
-    shareBtn.addEventListener('click', copyShareUrl);
-    joinRoomBtn.addEventListener('click', joinRoom);
-    leaveRoomBtn.addEventListener('click', leaveRoom);
-
-    window.addEventListener('keydown', (e) => {
-      if (viewerMode) return;
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-      if (e.key === 'F7') {
-        e.preventDefault();
-        calibrateFromSpawn();
-      } else if (e.key === 'F9') {
-        e.preventDefault();
-        calibrateFromDespawn();
-      } else if (e.key === 'F8') {
-        e.preventDefault();
-        resetTimer();
-      } else if (e.key === 'm' || e.key === 'M') {
-        toggleMute();
-      }
+      console.log('[onSnapshot]', snap.data());
+      applyRemoteEvent(snap.data());
+    }, (error) => {
+      console.error('[onSnapshot:error]', error);
+      setSyncState('同步監聽失敗，請檢查權限或重新連線', true);
     });
 
-    runSelfTests();
-    updateSoundUI();
+    setSyncState(viewerMode ? `Viewer synced: ${roomId}` : `Host synced: ${roomId}`, true);
+  }
+
+  function leaveRoom() {
+    if (unsubscribeRoom) {
+      unsubscribeRoom();
+      unsubscribeRoom = null;
+    }
+    roomId = '';
     setRoomUI();
-    setSyncState(hasFirebaseConfig ? 'Sync ready' : '請先填入 Firebase 設定', !hasFirebaseConfig);
+    setSyncState('Sync idle', false);
+    resetDisplay();
+  }
 
-    if (viewerMode) {
-      document.body.classList.add('viewer-mode');
-      viewerBanner.textContent = '觀看模式';
-      statusText.textContent = '觀看模式';
-      bigLabel.textContent = '等待房主操作';
-      hintText.textContent = '同步等待中';
+  async function copyShareUrl() {
+    try {
+      await navigator.clipboard.writeText(shareUrlInput.value);
+      shareBtn.innerHTML = '已複製<small>貼給隊友即可</small>';
+      setTimeout(() => {
+        shareBtn.innerHTML = '分享觀看網址<small>viewer only</small>';
+      }, 1800);
+    } catch (err) {
+      shareUrlInput.focus();
+      shareUrlInput.select();
     }
+  }
 
-    if (roomFromUrl) {
-      roomInput.value = roomFromUrl;
-      joinRoom();
-    } else {
-      resetDisplay();
+  function toggleMute() {
+    if (viewerMode) return;
+    muted = !muted;
+    updateSoundUI();
+  }
+
+  spawnBtn.addEventListener('click', async () => {
+    await calibrateFromSpawn(false);
+  });
+  despawnBtn.addEventListener('click', async () => {
+    await calibrateFromDespawn(false);
+  });
+  resetBtn.addEventListener('click', async () => {
+    await resetTimer(false);
+  });
+  soundMini.addEventListener('click', toggleMute);
+  shareBtn.addEventListener('click', copyShareUrl);
+  joinRoomBtn.addEventListener('click', async () => {
+    await joinRoom();
+  });
+  leaveRoomBtn.addEventListener('click', leaveRoom);
+
+  window.addEventListener('keydown', async (e) => {
+    if (viewerMode) return;
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+    if (e.key === 'F7') {
+      e.preventDefault();
+      await calibrateFromSpawn(false);
+    } else if (e.key === 'F9') {
+      e.preventDefault();
+      await calibrateFromDespawn(false);
+    } else if (e.key === 'F8') {
+      e.preventDefault();
+      await resetTimer(false);
+    } else if (e.key === 'm' || e.key === 'M') {
+      toggleMute();
     }
-  </script>
+  });
+
+  updateSoundUI();
+  setRoomUI();
+  setSyncState('Sync idle', false);
+
+  if (viewerMode) {
+    document.body.classList.add('viewer-mode');
+    viewerBanner.textContent = '觀看模式';
+    statusText.textContent = '觀看模式';
+    bigLabel.textContent = '等待房主操作';
+    hintText.textContent = '同步等待中';
+  }
+
+  if (roomFromUrl) {
+    roomInput.value = roomFromUrl;
+    joinRoom();
+  } else {
+    resetDisplay();
+  }
+</script>
 </body>
 </html>
