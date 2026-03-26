@@ -105,7 +105,7 @@
       border-radius: 28px;
       padding: 22px;
       overflow: hidden;
-      transition: box-shadow .2s ease, border-color .2s ease;
+      transition: box-shadow .2s ease, border-color .2s ease, transform .15s ease;
       order: 1;
     }
 
@@ -142,6 +142,7 @@
       font-weight: 900;
       letter-spacing: -.08em;
       color: #2a3350;
+      transform-origin: left center;
     }
 
     .label {
@@ -312,11 +313,27 @@
     .critical { box-shadow: 0 24px 42px rgba(255,77,109,.16); }
 
     .pulse { animation: pulse 1.2s infinite; }
+    .jump { animation: jump .45s ease infinite; }
 
     @keyframes pulse {
       0%, 100% { box-shadow: 0 18px 36px rgba(82, 97, 135, .10); }
       50% { box-shadow: 0 24px 42px rgba(239,68,68,.22); }
     }
+
+    @keyframes jump {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-4px); }
+      40% { transform: translateX(4px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
+
+    .shake-once { animation: shake .35s ease; }
 
     .viewer-mode .controls,
     .viewer-mode .cards .clickable,
@@ -550,12 +567,12 @@
     </div>
 
     <div class="footer" style="display:block;padding:12px 18px 18px;font-size:12px;color:#6d7890;line-height:1.5;">
-<strong>快速使用</strong><br>
-1. 輸入房號 → 點「連線房間」建立或加入同步計時<br>
-2. 將「分享觀看網址」傳給隊友同步觀看<br>
-3. 建議 1 人負責操作 Spawn / Despawn，其餘隊友只觀看<br>
-操作者建議使用手機操作（避免遊戲視窗焦點影響快捷鍵）
-</div>
+      <strong>快速使用</strong><br>
+      1. 輸入房號 → 點「連線房間」建立或加入同步計時<br>
+      2. 將「分享觀看網址」傳給隊友同步觀看<br>
+      3. 建議 1 人負責操作 Spawn / Despawn，其餘隊友只觀看<br>
+      操作者建議使用手機操作（避免遊戲視窗焦點影響快捷鍵）
+    </div>
   </div>
 
   <script type="module">
@@ -592,6 +609,7 @@
     const MAX_SPAWN = 85;
     const PREWARN = 45;
     const BLACK_WATER_DURATION = 30;
+    const FINAL_WARNING_SECONDS = 5;
 
     const hero = document.getElementById('hero');
     const statusText = document.getElementById('statusText');
@@ -633,6 +651,9 @@
     let roomId = '';
     let unsubscribeRoom = null;
     let lastRemoteEventId = '';
+    let warningInterval = null;
+let lastWarningSecond = null;
+    let dangerAlertPlayed = false;
 
     function getAudioCtx() {
       if (!audioCtx) {
@@ -641,31 +662,59 @@
       return audioCtx;
     }
 
-    function beep(type = 'short') {
+    function tone(freq, durationMs, volume = 0.12) {
       if (muted || viewerMode) return;
       try {
         const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-
-        let duration = 0.08;
-        let freq = 880;
-        if (type === 'warn') { duration = 0.12; freq = 1046; }
-        if (type === 'spawn') { duration = 0.28; freq = 660; }
-
-        osc.frequency.value = freq;
         osc.type = 'square';
+        osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
         osc.start(now);
-        osc.stop(now + duration + 0.02);
+        osc.stop(now + durationMs / 1000 + 0.02);
       } catch (e) {
         console.warn('Audio unavailable', e);
       }
+    }
+
+    function beep(type = 'short') {
+      if (type === 'warn') tone(1046, 120, 0.12);
+      else if (type === 'spawn') tone(660, 280, 0.14);
+      else tone(880, 80, 0.1);
+    }
+
+    function startContinuousWarning() {
+      if (muted || viewerMode || warningInterval) return;
+      const pattern = () => {
+        tone(1180, 180, 0.18);
+        setTimeout(() => tone(880, 180, 0.18), 220);
+      };
+      pattern();
+      warningInterval = setInterval(pattern, 900);
+    }
+
+    function stopContinuousWarning() {
+      if (!warningInterval) return;
+      clearInterval(warningInterval);
+      warningInterval = null;
+    }
+
+    function triggerDangerEntryAlert() {
+      if (dangerAlertPlayed || muted || viewerMode) return;
+      dangerAlertPlayed = true;
+      tone(1320, 140, 0.16);
+      setTimeout(() => tone(1320, 140, 0.16), 180);
+      hero.classList.remove('shake-once');
+      void hero.offsetWidth;
+      hero.classList.add('shake-once');
+      setTimeout(() => hero.classList.remove('shake-once'), 400);
     }
 
     function fmt(v) {
@@ -687,6 +736,7 @@
 
     function updateSoundUI() {
       soundMini.textContent = muted ? 'OFF' : 'ON';
+      if (muted) stopContinuousWarning();
     }
 
     function updateShareUrl() {
@@ -719,11 +769,14 @@
         timer = null;
       }
       running = false;
+      stopContinuousWarning();
+      bigNumber.classList.remove('jump');
     }
 
     function resetDisplay() {
       clearTimer();
       hasCalibration = false;
+      dangerAlertPlayed = false;
       statusText.textContent = viewerMode ? '觀看模式' : '待命';
       bigNumber.textContent = '--';
       bigLabel.textContent = viewerMode ? '等待房主操作' : '按下 Spawn 或 Despawn';
@@ -753,8 +806,11 @@
       nextSpawnTarget = performance.now() + (durationSec * 1000);
       running = true;
       hasCalibration = true;
+      dangerAlertPlayed = false;
       lastWhole = null;
       lastPhase = phaseSeed;
+      stopContinuousWarning();
+      bigNumber.classList.remove('jump');
       render();
       if (!timer) timer = setInterval(render, 100);
     }
@@ -786,8 +842,10 @@
 
       barFill.style.width = `${progress}%`;
       hero.classList.remove('critical');
+      bigNumber.classList.remove('jump');
 
       if (elapsedFromAnchor < PREWARN) {
+        stopContinuousWarning();
         setClass('safe');
         setNumberColor('safe');
         statusText.textContent = '安全期';
@@ -808,11 +866,27 @@
         hero.style.borderColor = 'rgba(245,158,11,.30)';
         stateMini.textContent = '預警';
         nextSpawnMini.textContent = `${Math.ceil(minWindowRemaining)}–${Math.ceil(maxWindowRemaining)}`;
+
         if (lastPhase !== 'warn') {
           beep('warn');
           lastPhase = 'warn';
         }
+
+        const secondsLeft = Math.ceil(MIN_SPAWN - elapsedFromAnchor);
+        if (secondsLeft <= FINAL_WARNING_SECONDS) {
+          if (lastWarningSecond !== secondsLeft) {
+            tone(1200, 140, 0.2);
+            lastWarningSecond = secondsLeft;
+          }
+          bigNumber.classList.add('jump');
+        } else {
+          lastWarningSecond = null;
+        } else {
+          stopContinuousWarning();
+        }
       } else if (elapsedFromAnchor <= MAX_SPAWN) {
+        stopContinuousWarning();
+        triggerDangerEntryAlert();
         setClass('danger');
         setNumberColor('danger');
         statusText.textContent = '⚠ 黑水可能隨時出現';
@@ -822,13 +896,13 @@
         hero.style.borderColor = 'rgba(255,60,60,.45)';
         stateMini.textContent = '黑水區';
         nextSpawnMini.textContent = `0–${Math.ceil(maxWindowRemaining)}`;
-        if (whole <= 3) hero.classList.add('critical');
+        if (whole <= 3) {
+          hero.classList.add('critical');
+          bigNumber.classList.add('jump');
+        }
         if (lastPhase !== 'danger') {
           beep('spawn');
           lastPhase = 'danger';
-        }
-        if (whole !== lastWhole && whole <= 5) {
-          beep('warn');
         }
       }
 
@@ -939,8 +1013,11 @@
       console.assert(MIN_SPAWN < MAX_SPAWN, 'MIN_SPAWN must be less than MAX_SPAWN');
       console.assert(PREWARN < MIN_SPAWN, 'PREWARN must be less than MIN_SPAWN');
       console.assert(BLACK_WATER_DURATION > 0, 'BLACK_WATER_DURATION must be positive');
+      console.assert(FINAL_WARNING_SECONDS < (MIN_SPAWN - PREWARN), 'FINAL_WARNING_SECONDS must fit inside warn window');
       console.assert(sanitizeRoomId('Lotus Team A') === 'lotus-team-a', 'sanitizeRoomId should normalize room names');
+      console.assert(sanitizeRoomId('  A__B  ') === 'a__b', 'sanitizeRoomId should preserve underscore');
       console.assert(fmt(12.34) === '12.3s', 'fmt should format seconds to 1 decimal place');
+      console.assert(fmt(-5) === '0.0s', 'fmt should clamp negative seconds to 0');
     }
 
     spawnBtn.addEventListener('click', () => calibrateFromSpawn(false));
