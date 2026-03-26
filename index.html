@@ -861,9 +861,17 @@
       if (!data || !data.type) return;
       if (data.eventId && data.eventId === lastRemoteEventId) return;
       lastRemoteEventId = data.eventId || '';
-      if (data.type === 'spawn') calibrateFromSpawn(true);
-      else if (data.type === 'despawn') calibrateFromDespawn(true);
-      else if (data.type === 'reset') resetTimer(true);
+
+      if (data.type === 'spawn') {
+        calibrateFromSpawn(true);
+      } else if (data.type === 'despawn') {
+        calibrateFromDespawn(true);
+      } else if (data.type === 'reset') {
+        resetTimer(true);
+      } else if (data.type === 'idle') {
+        // 房間剛建立或重新連線時，不強制啟動計時，只維持同步存在
+        setSyncState(viewerMode ? `Viewer synced: ${data.roomId || roomId}` : `Host synced: ${data.roomId || roomId}`, true);
+      }
     }
 
     async function joinRoom() {
@@ -876,14 +884,35 @@
         setSyncState('請輸入有效房號', true);
         return;
       }
-      if (unsubscribeRoom) unsubscribeRoom();
+
+      if (unsubscribeRoom) {
+        unsubscribeRoom();
+        unsubscribeRoom = null;
+      }
+
       roomId = nextRoom;
       setRoomUI();
+
       const roomRef = doc(db, 'timeRiftRooms', roomId);
+
+      // 連線當下先建立房間文件，避免刪房後重新加入卻沒有監聽目標
+      await setDoc(roomRef, {
+        roomId,
+        type: 'idle',
+        duration: 0,
+        eventId: `join-${Date.now()}`,
+        emittedAt: Date.now(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
       unsubscribeRoom = onSnapshot(roomRef, (snap) => {
         if (!snap.exists()) return;
         applyRemoteEvent(snap.data());
+      }, (error) => {
+        console.error('onSnapshot error:', error);
+        setSyncState('同步監聽失敗，請檢查權限或重新連線', true);
       });
+
       setSyncState(viewerMode ? `Viewer synced: ${roomId}` : `Host synced: ${roomId}`, true);
     }
 
@@ -892,13 +921,8 @@
         unsubscribeRoom();
         unsubscribeRoom = null;
       }
-      if (!viewerMode && db && roomId) {
-        try {
-          await deleteDoc(doc(db, 'timeRiftRooms', roomId));
-        } catch (e) {
-          console.warn(e);
-        }
-      }
+
+      // 只離開監聽，不刪除房間文件；避免其他 viewer 或 host 重新進房時失去同步目標
       roomId = '';
       setRoomUI();
       setSyncState('Sync idle', false);
