@@ -567,17 +567,17 @@
     </div>
 
     <div class="footer" style="display:block;padding:12px 18px 18px;font-size:12px;color:#6d7890;line-height:1.5;">
-      <strong>快速使用</strong><br>
-      1. 輸入房號 → 點「連線房間」建立或加入同步計時<br>
-      2. 將「分享觀看網址」傳給隊友同步觀看<br>
-      3. 建議 1 人負責操作 Spawn / Despawn，其餘隊友只觀看<br>
-      操作者建議使用手機操作（避免遊戲視窗焦點影響快捷鍵）
-    </div>
+  <strong>快速使用</strong><br>
+  1. Host 輸入房號後連線房間；Viewer 用分享網址進入即可<br>
+  2. Viewer 只觀看不寫入，Host 僅在事件發生時同步，減少 Firebase 用量<br>
+  3. 建議 1 人負責操作 Spawn / Despawn，其餘隊友只觀看<br>
+  操作者建議使用手機操作（避免遊戲視窗焦點影響快捷鍵）
+</div>
   </div>
 
   <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
-  import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: 'AIzaSyCKRFShtyQ9dMtO54_XUOb0pWHplKJX_80',
@@ -903,16 +903,27 @@
     setRoomUI();
 
     const roomRef = doc(db, 'timeRiftRooms', roomId);
+
     try {
-      await setDoc(roomRef, {
-        roomId,
-        type: 'idle',
-        duration: 0,
-        eventId: `join-${Date.now()}`,
-        emittedAt: Date.now(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      console.log('[joinRoom:created]', roomId);
+      // 低流量策略：Viewer 只監聽不寫入；Host 只有在房間不存在時才建立 idle 文件
+      if (!viewerMode) {
+        const roomSnap = await getDoc(roomRef);
+        if (!roomSnap.exists()) {
+          await setDoc(roomRef, {
+            roomId,
+            type: 'idle',
+            duration: 0,
+            eventId: `join-${Date.now()}`,
+            emittedAt: Date.now(),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+          console.log('[joinRoom:created]', roomId);
+        } else {
+          console.log('[joinRoom:reuse]', roomId);
+        }
+      } else {
+        console.log('[joinRoom:viewer-listen-only]', roomId);
+      }
     } catch (error) {
       console.error('[joinRoom:error]', error);
       setSyncState('建立房間失敗，請檢查權限', true);
