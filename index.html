@@ -530,8 +530,8 @@
       </section>
 
       <section class="controls">
-        <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · F7</small></button>
-        <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · F9</small></button>
+        <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現 · F7 / Space</small></button>
+        <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失 · F9 / Ctrl</small></button>
         <button class="danger-btn" id="resetBtn">Reset<small>重新校正計時 · F8</small></button>
       </section>
 
@@ -569,8 +569,8 @@
     <div class="footer" style="display:block;padding:12px 18px 18px;font-size:12px;color:#6d7890;line-height:1.5;">
   <strong>快速使用</strong><br>
   1. Host 輸入房號後連線房間；Viewer 用分享網址進入即可<br>
-  2. Viewer 只觀看不寫入，Host 僅在事件發生時同步，減少 Firebase 用量<br>
-  3. 建議 1 人負責操作 Spawn / Despawn，其餘隊友只觀看<br>
+  2. Viewer 只觀看不寫入，但會同步播放提示音與警示<br>
+  3. F7 / Space = 黑水出現，F9 / Ctrl = 黑水消失，F8 = 重置<br>
   操作者建議使用手機操作（避免遊戲視窗焦點影響快捷鍵）
 </div>
   </div>
@@ -644,7 +644,7 @@
   }
 
   function tone(freq, durationMs = 150, volume = 0.25) {
-    if (muted || viewerMode) return;
+    if (muted) return;
     try {
       const ctx = getAudioCtx();
       if (ctx.state === 'suspended') ctx.resume();
@@ -709,7 +709,7 @@
     roomMini.textContent = roomId || '未連線';
     roomInput.value = roomId;
     updateShareUrl();
-    metaText.textContent = roomId ? `房間：${roomId}` : 'F7 / F9 / F8 / M';
+    metaText.textContent = roomId ? `房間：${roomId}` : 'F7 / Space ・ F9 / Ctrl ・ F8 / M';
   }
 
   function clearTimer() {
@@ -730,8 +730,8 @@
     setNumberColor('idle');
     statusText.textContent = viewerMode ? '觀看模式' : '待命';
     bigNumber.textContent = '--';
-    bigLabel.textContent = viewerMode ? '等待房主操作' : '按 F7 / F9 開始';
-    hintText.textContent = viewerMode ? '同步等待中' : 'F7 = 黑水出現 ・ F9 = 黑水消失 ・ F8 = 重置 ・ 65–85 秒區間為「隨時可能出現」';
+    bigLabel.textContent = viewerMode ? '等待房主操作' : '按 F7 / F9 或 Space / Ctrl 開始';
+    hintText.textContent = viewerMode ? '同步等待中（觀看模式也會播放提示音）' : 'F7 / Space = 黑水出現 ・ F9 / Ctrl = 黑水消失 ・ F8 = 重置 ・ 65–85 秒區間為「隨時可能出現」';
     stateMini.textContent = viewerMode ? '等待' : '待命';
     nextSpawnMini.textContent = '65–85';
     barFill.style.width = '0%';
@@ -994,10 +994,10 @@
   window.addEventListener('keydown', async (e) => {
     if (viewerMode) return;
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-    if (e.key === 'F7') {
+    if (e.key === 'F7' || e.code === 'Space') {
       e.preventDefault();
       await calibrateFromSpawn(false);
-    } else if (e.key === 'F9') {
+    } else if (e.key === 'F9' || e.key === 'Control') {
       e.preventDefault();
       await calibrateFromDespawn(false);
     } else if (e.key === 'F8') {
