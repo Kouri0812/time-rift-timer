@@ -336,7 +336,6 @@
     .shake-once { animation: shake .35s ease; }
 
     .viewer-mode .controls,
-    .viewer-mode .cards .clickable,
     .viewer-mode .room-row,
     .viewer-mode .share-btn {
       pointer-events: none;
@@ -508,6 +507,7 @@
     <div class="main">
       <div class="viewer-banner" id="viewerBanner">觀看模式</div>
       <div class="sync-banner" id="syncBanner">請先填入 Firebase 設定</div>
+      <div class="sync-banner show" id="audioBanner" style="display:none;">點一下畫面啟用提示音</div>
 
       <section class="hero safe" id="hero">
         <div class="status-row">
@@ -615,6 +615,7 @@
   const shareBtn = document.getElementById('shareBtn');
   const viewerBanner = document.getElementById('viewerBanner');
   const syncBanner = document.getElementById('syncBanner');
+  const audioBanner = document.getElementById('audioBanner');
   const syncStateBadge = document.getElementById('syncStateBadge');
   const roomInput = document.getElementById('roomInput');
   const joinRoomBtn = document.getElementById('joinRoomBtn');
@@ -635,6 +636,7 @@
   let lastRemoteEventId = '';
   let lastWarningSecond = null;
   let dangerAlertPlayed = false;
+  let audioUnlocked = false;
 
   function getAudioCtx() {
     if (!audioCtx) {
@@ -643,8 +645,21 @@
     return audioCtx;
   }
 
+  async function unlockAudio() {
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      audioUnlocked = true;
+      if (audioBanner) audioBanner.style.display = 'none';
+    } catch (e) {
+      console.warn('Audio unlock failed', e);
+    }
+  }
+
   function tone(freq, durationMs = 150, volume = 0.25) {
-    if (muted) return;
+    if (muted || !audioUnlocked) return;
     try {
       const ctx = getAudioCtx();
       if (ctx.state === 'suspended') ctx.resume();
@@ -970,7 +985,6 @@
   }
 
   function toggleMute() {
-    if (viewerMode) return;
     muted = !muted;
     updateSoundUI();
   }
@@ -984,14 +998,22 @@
   resetBtn.addEventListener('click', async () => {
     await resetTimer(false);
   });
-  soundMini.addEventListener('click', toggleMute);
+  soundMini.addEventListener('click', async () => {
+    await unlockAudio();
+    toggleMute();
+  });
   shareBtn.addEventListener('click', copyShareUrl);
   joinRoomBtn.addEventListener('click', async () => {
     await joinRoom();
   });
   leaveRoomBtn.addEventListener('click', leaveRoom);
 
+  window.addEventListener('pointerdown', () => {
+    unlockAudio();
+  }, { once: true });
+
   window.addEventListener('keydown', async (e) => {
+    await unlockAudio();
     if (viewerMode) return;
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
     if (e.key === 'F7' || e.code === 'Space') {
@@ -1014,6 +1036,7 @@
 
   if (viewerMode) {
     document.body.classList.add('viewer-mode');
+    if (audioBanner) audioBanner.style.display = 'flex';
     viewerBanner.textContent = '觀看模式';
     statusText.textContent = '觀看模式';
     bigLabel.textContent = '等待房主操作';
