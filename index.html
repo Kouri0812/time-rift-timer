@@ -417,6 +417,62 @@
       pointer-events: none;
     }
 
+
+    .compact-item {
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .compact-k {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .compact-v {
+      font-size: 15px;
+      font-weight: 950;
+      color: #f4f7ff;
+    }
+
+    .audio-btn {
+      position: relative;
+      z-index: 100;
+      width: 100%;
+      cursor: pointer;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+      appearance: none;
+    }
+
+    .viewer-mode body,
+    body.viewer-mode {
+      padding-top: 0;
+    }
+
+    body.viewer-mode {
+      display: block;
+      min-height: 100dvh;
+    }
+
+    body.viewer-mode .app {
+      margin: 0 auto;
+    }
+
+    body.viewer-mode .main {
+      padding-top: 10px;
+    }
+
+    body.viewer-mode .topbar {
+      padding-bottom: 10px;
+    }
+
     .safe .phase { color: var(--safe); }
     .warn .phase { color: var(--warn); }
     .danger .phase { color: var(--danger); }
@@ -523,7 +579,7 @@
     <div class="main">
       <div class="banner viewer-banner" id="viewerBanner">觀看模式</div>
       <div class="banner" id="syncBanner">同步狀態</div>
-      <div class="banner show" id="audioBanner" style="display:none;">點一下畫面啟用提示音</div>
+      <button class="banner show audio-btn" id="audioBanner" type="button" style="display:none;">點一下啟用提示音</button>
 
       <section class="hero safe" id="hero">
         <div class="hero-head">
@@ -1068,11 +1124,17 @@
     despawnBtn.addEventListener('click', async () => { await calibrateFromDespawn(false); });
     resetBtn.addEventListener('click', async () => { await resetTimer(false); });
     soundMini.addEventListener('click', async () => { await unlockAudio(); toggleMute(); });
+    audioBanner.addEventListener('click', async () => { await unlockAudio(); });
+    audioBanner.addEventListener('touchend', async (e) => {
+      e.preventDefault();
+      await unlockAudio();
+    }, { passive: false });
     shareBtn.addEventListener('click', copyShareUrl);
     joinRoomBtn.addEventListener('click', async () => { await joinRoom(); });
     leaveRoomBtn.addEventListener('click', async () => { await leaveRoom(); });
 
     window.addEventListener('pointerdown', () => { unlockAudio(); }, { once: true });
+    window.addEventListener('touchstart', () => { unlockAudio(); }, { once: true, passive: true });
 
     window.addEventListener('keydown', async (e) => {
       await unlockAudio();
@@ -1111,6 +1173,7 @@
       statusText.textContent = '觀看模式';
       bigLabel.textContent = '等待操作';
       hintText.textContent = '等待同步';
+      syncBanner.classList.remove('show');
     }
 
     if (roomFromUrl) {
