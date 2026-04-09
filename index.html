@@ -124,6 +124,117 @@
     .banner.show,
     .viewer-mode .viewer-banner { display: flex; }
 
+    .audio-btn {
+      position: relative;
+      z-index: 120;
+      pointer-events: auto;
+      cursor: pointer;
+      color: #eef2ff;
+      background: linear-gradient(180deg, rgba(124,137,255,.22), rgba(89,103,244,.14));
+      border: 1px solid rgba(134,148,255,.32);
+      box-shadow: 0 12px 36px rgba(53,68,173,.18), inset 0 1px 0 rgba(255,255,255,.08);
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: .01em;
+    }
+
+    .audio-btn::before {
+      content: "🔊";
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .audio-gate {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background:
+        radial-gradient(circle at center, rgba(109,124,255,.16), transparent 38%),
+        rgba(4,8,18,.74);
+      backdrop-filter: blur(14px);
+      z-index: 999;
+    }
+
+    .audio-gate.show {
+      display: flex;
+    }
+
+    .audio-gate-card {
+      width: min(440px, 100%);
+      border-radius: 28px;
+      padding: 22px 18px 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background:
+        radial-gradient(circle at top right, rgba(124,137,255,.16), transparent 34%),
+        linear-gradient(180deg, rgba(20,29,52,.96), rgba(10,16,31,.98));
+      box-shadow: 0 28px 90px rgba(0,0,0,.42);
+      text-align: center;
+    }
+
+    .audio-gate-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(124,137,255,.10);
+      border: 1px solid rgba(134,148,255,.22);
+      color: #b9c4ff;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+
+    .audio-gate-title {
+      margin: 16px 0 8px;
+      font-size: clamp(28px, 7vw, 38px);
+      font-weight: 980;
+      letter-spacing: -.04em;
+      color: #f7f9ff;
+    }
+
+    .audio-gate-text {
+      margin: 0 auto 18px;
+      max-width: 26ch;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .audio-gate-btn {
+      width: 100%;
+      min-height: 68px;
+      border-radius: 22px;
+      border: 1px solid rgba(134,148,255,.34);
+      background: linear-gradient(180deg, #8390ff, #5c68f5);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 980;
+      letter-spacing: -.02em;
+      box-shadow: 0 18px 44px rgba(75,89,228,.34);
+      animation: audioGatePulse 1.55s ease-in-out infinite;
+    }
+
+    .audio-gate-btn small {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      opacity: .9;
+      letter-spacing: 0;
+    }
+
+    .audio-gate-tip {
+      margin-top: 12px;
+      color: #8f9cc0;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+
     .hero {
       position: relative;
       overflow: hidden;
@@ -507,6 +618,12 @@
       75% { transform: translateX(-3px); }
     }
 
+
+    @keyframes audioGatePulse {
+      0%,100% { transform: scale(1); box-shadow: 0 18px 44px rgba(75,89,228,.34); }
+      50% { transform: scale(1.018); box-shadow: 0 22px 52px rgba(95,110,255,.48); }
+    }
+
     @media (max-width: 760px) {
       body { padding: 8px; display: block; }
       .app { width: 100%; border-radius: 24px; }
@@ -540,6 +657,10 @@
       #roomInput { grid-column: span 2; }
       .room-btn { min-height: 54px; }
       .share-url { font-size: 11px; }
+      .audio-gate { padding: 14px; }
+      .audio-gate-card { padding: 18px 14px 14px; border-radius: 24px; }
+      .audio-gate-text { font-size: 13px; margin-bottom: 14px; }
+      .audio-gate-btn { min-height: 64px; font-size: 18px; border-radius: 20px; }
     }
 
     @media (max-width: 560px) {
@@ -567,6 +688,16 @@
   </style>
 </head>
 <body>
+  <div class="audio-gate" id="audioGate" aria-live="polite">
+    <div class="audio-gate-card">
+      <div class="audio-gate-kicker">觀看端提示音</div>
+      <div class="audio-gate-title">先開啟提示音</div>
+      <p class="audio-gate-text">分享端要先啟用提示音，才會收到黑水倒數與預警提醒。</p>
+      <button class="audio-gate-btn" id="audioGateBtn" type="button">啟用提示音<small>點一下後開始同步提醒</small></button>
+      <div class="audio-gate-tip">未啟用前，觀看端不會播放提示音</div>
+    </div>
+  </div>
+
   <div class="app">
     <div class="topbar">
       <div class="title-row">
@@ -698,6 +829,8 @@
     const viewerBanner = document.getElementById('viewerBanner');
     const syncBanner = document.getElementById('syncBanner');
     const audioBanner = document.getElementById('audioBanner');
+    const audioGate = document.getElementById('audioGate');
+    const audioGateBtn = document.getElementById('audioGateBtn');
     const syncStateBadge = document.getElementById('syncStateBadge');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoomBtn');
@@ -738,6 +871,7 @@
         if (ctx.state === 'suspended') await ctx.resume();
         audioUnlocked = true;
         if (audioBanner) audioBanner.style.display = 'none';
+        if (audioGate) audioGate.classList.remove('show');
       } catch (e) {
         console.warn('Audio unlock failed', e);
       }
@@ -1129,6 +1263,11 @@
       e.preventDefault();
       await unlockAudio();
     }, { passive: false });
+    audioGateBtn?.addEventListener('click', async () => { await unlockAudio(); });
+    audioGateBtn?.addEventListener('touchend', async (e) => {
+      e.preventDefault();
+      await unlockAudio();
+    }, { passive: false });
     shareBtn.addEventListener('click', copyShareUrl);
     joinRoomBtn.addEventListener('click', async () => { await joinRoom(); });
     leaveRoomBtn.addEventListener('click', async () => { await leaveRoom(); });
@@ -1169,11 +1308,14 @@
     if (viewerMode) {
       document.body.classList.add('viewer-mode');
       if (audioBanner) audioBanner.style.display = 'flex';
+      if (audioGate && !audioUnlocked) audioGate.classList.add('show');
       viewerBanner.textContent = '觀看模式';
       statusText.textContent = '觀看模式';
       bigLabel.textContent = '等待操作';
       hintText.textContent = '等待同步';
       syncBanner.classList.remove('show');
+    } else {
+      if (audioGate) audioGate.classList.remove('show');
     }
 
     if (roomFromUrl) {
