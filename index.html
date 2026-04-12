@@ -522,11 +522,16 @@
     .viewer-mode .room-actions .room-btn,
     .viewer-mode #shareBtn,
     .viewer-mode #joinRoomBtn,
-    .viewer-mode #leaveRoomBtn,
-    .viewer-mode #miniWindowBtn {
+    .viewer-mode #leaveRoomBtn {
       opacity: .56;
       filter: grayscale(.12);
       pointer-events: none;
+    }
+
+    .viewer-mode #miniWindowBtn {
+      opacity: 1;
+      filter: none;
+      pointer-events: auto;
     }
 
 
@@ -1300,10 +1305,17 @@
       else url.searchParams.delete('viewer');
       if (roomId) url.searchParams.set('room', roomId);
 
+      const width = viewerMode ? 360 : 380;
+      const height = viewerMode ? 680 : 720;
+      const left = Math.max(0, (window.screen?.availWidth || window.innerWidth || 1280) - width - 24);
+      const top = 24;
+
       const features = [
         'popup=yes',
-        'width=380',
-        'height=720',
+        `width=${width}`,
+        `height=${height}`,
+        `left=${left}`,
+        `top=${top}`,
         'menubar=no',
         'toolbar=no',
         'location=no',
@@ -1312,11 +1324,21 @@
         'scrollbars=no'
       ].join(',');
 
-      const win = window.open(url.toString(), 'time-rift-mini-window', features);
+      const windowName = viewerMode ? 'time-rift-mini-window-viewer' : 'time-rift-mini-window-host';
+      const win = window.open(url.toString(), windowName, features);
+
       if (win) {
-        try { win.focus(); } catch (e) {}
+        const nudgeWindow = () => {
+          try { win.resizeTo(width, height); } catch (e) {}
+          try { win.moveTo(left, top); } catch (e) {}
+          try { win.focus(); } catch (e) {}
+        };
+
+        nudgeWindow();
+        setTimeout(nudgeWindow, 180);
+        setTimeout(nudgeWindow, 640);
       } else {
-        alert('瀏覽器阻擋了小視窗，請允許彈出視窗後再試一次。');
+        alert('瀏覽器阻擋了小視窗，請允許彈出視窗後再試一次。\n若小窗仍被蓋住，這是瀏覽器／作業系統限制，可先將小窗釘選或改用獨立瀏覽器視窗。');
       }
     }
 
