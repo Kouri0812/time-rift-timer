@@ -36,14 +36,13 @@
         radial-gradient(circle at top left, rgba(109,124,255,.15), transparent 26%),
         radial-gradient(circle at bottom right, rgba(34,197,94,.08), transparent 24%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2));
-      background-attachment: fixed;
-      padding: 28px 18px 20px;
-      display: block;
+      padding: 14px;
+      display: grid;
+      place-items: center;
     }
 
     .app {
       width: min(760px, 100%);
-      margin: 0 auto 18px;
       background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 30px;
@@ -442,7 +441,7 @@
 
     .mini-actions {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
 
@@ -523,7 +522,8 @@
     .viewer-mode .room-actions .room-btn,
     .viewer-mode #shareBtn,
     .viewer-mode #joinRoomBtn,
-    .viewer-mode #leaveRoomBtn {
+    .viewer-mode #leaveRoomBtn,
+    .viewer-mode #miniWindowBtn {
       opacity: .56;
       filter: grayscale(.12);
       pointer-events: none;
@@ -563,14 +563,18 @@
       appearance: none;
     }
 
+    .viewer-mode body,
+    body.viewer-mode {
+      padding-top: 0;
+    }
+
     body.viewer-mode {
       display: block;
       min-height: 100dvh;
-      padding-top: 18px;
     }
 
     body.viewer-mode .app {
-      margin: 0 auto 18px;
+      margin: 0 auto;
     }
 
     body.viewer-mode .main {
@@ -580,6 +584,46 @@
     body.viewer-mode .topbar {
       padding-bottom: 10px;
     }
+
+
+    body.mini-mode {
+      padding: 8px;
+      display: block;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #070c18, #0d1426);
+    }
+
+    body.mini-mode .app {
+      width: 100%;
+      max-width: 360px;
+      margin: 0 auto;
+      border-radius: 24px;
+    }
+
+    body.mini-mode .topbar {
+      padding: 10px 12px;
+    }
+
+    body.mini-mode .title { font-size: 16px; }
+    body.mini-mode .pill { display: none; }
+    body.mini-mode .main { padding: 10px; gap: 10px; }
+    body.mini-mode .viewer-banner,
+    body.mini-mode #syncBanner,
+    body.mini-mode .room-panel,
+    body.mini-mode .mini-actions,
+    body.mini-mode #miniWindowBtn { display: none !important; }
+    body.mini-mode .hero { padding: 14px; gap: 12px; border-radius: 22px; }
+    body.mini-mode .hero-head { align-items: center; }
+    body.mini-mode .meta { font-size: 10px; }
+    body.mini-mode .big-label { font-size: 18px; }
+    body.mini-mode .number { font-size: clamp(88px, 30vw, 124px); }
+    body.mini-mode .unit { font-size: 14px; padding-bottom: 8px; }
+    body.mini-mode .hint { font-size: 12px; min-height: 16px; }
+    body.mini-mode .compact-row { grid-template-columns: repeat(2, 1fr); }
+    body.mini-mode .compact-item { padding: 8px 10px; border-radius: 14px; }
+    body.mini-mode .controls { grid-template-columns: 1fr 1fr; gap: 8px; }
+    body.mini-mode .action-btn { min-height: 74px; font-size: 20px; border-radius: 18px; }
+    body.mini-mode .action-btn small { font-size: 11px; margin-top: 4px; }
 
     .safe .phase { color: var(--safe); }
     .warn .phase { color: var(--warn); }
@@ -616,39 +660,14 @@
     }
 
 
-
-    .credit {
-      padding: 0 16px 16px;
-      text-align: center;
-      font-size: 11px;
-      color: rgba(255,255,255,.38);
-      letter-spacing: .08em;
-    }
-
-    .credit span {
-      color: rgba(255,255,255,.68);
-      font-weight: 700;
-    }
-
     @keyframes audioGatePulse {
       0%,100% { transform: scale(1); box-shadow: 0 18px 44px rgba(75,89,228,.34); }
       50% { transform: scale(1.018); box-shadow: 0 22px 52px rgba(95,110,255,.48); }
     }
 
-
-    @media (min-width: 761px) {
-      body {
-        padding: 34px 22px 24px;
-      }
-
-      .app {
-        margin: 0 auto 22px;
-      }
-    }
-
     @media (max-width: 760px) {
-      body { padding: 8px 8px 14px; display: block; }
-      .app { width: 100%; border-radius: 24px; margin-bottom: 10px; }
+      body { padding: 8px; display: block; }
+      .app { width: 100%; border-radius: 24px; }
       .topbar { padding: 12px 12px 10px; }
       .main { padding: 12px; gap: 10px; }
       .title { font-size: 17px; }
@@ -673,7 +692,7 @@
       .compact-v { font-size: 14px; }
       .controls { gap: 8px; }
       .action-btn { min-height: 84px; font-size: 22px; }
-      .mini-actions { gap: 8px; }
+      .mini-actions { gap: 8px; grid-template-columns: repeat(3, 1fr); }
       .room-panel { gap: 8px; padding: 10px; }
       .room-actions { grid-template-columns: 1fr 1fr; }
       #roomInput { grid-column: span 2; }
@@ -777,6 +796,7 @@
       <section class="mini-actions">
         <button class="mini-btn" id="resetBtn">Reset<small>重新校正</small></button>
         <button class="mini-btn" id="shareBtn">分享網址</button>
+        <button class="mini-btn" id="miniWindowBtn">懸浮小窗<small>精簡模式</small></button>
       </section>
 
       <section class="room-panel">
@@ -794,7 +814,6 @@
         <input id="shareUrlInput" type="text" readonly value="" style="display:none;" />
       </section>
     </div>
-    <div class="credit">Design by <span>小沐兒</span></div>
   </div>
 
   <script type="module">
@@ -849,6 +868,7 @@
     const shareUrlInput = document.getElementById('shareUrlInput');
     const shareUrlPreview = document.getElementById('shareUrlPreview');
     const shareBtn = document.getElementById('shareBtn');
+    const miniWindowBtn = document.getElementById('miniWindowBtn');
     const viewerBanner = document.getElementById('viewerBanner');
     const syncBanner = document.getElementById('syncBanner');
     const audioBanner = document.getElementById('audioBanner');
@@ -862,6 +882,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const viewerMode = params.get('viewer') === '1';
+    const miniMode = params.get('mini') === '1';
     const roomFromUrl = params.get('room') || '';
 
     const clientRole = viewerMode ? 'viewer' : 'host';
@@ -961,7 +982,7 @@
       roomInlineText.textContent = roomId ? `${roomId}｜${viewerMode ? '觀看端' : '操作者'}` : '未連線';
       roomInput.value = roomId;
       updateShareUrl();
-      metaText.textContent = roomId ? `房間 ${roomId}` : 'F7 / F9 / F8 / M';
+      metaText.textContent = miniMode ? (roomId ? `${viewerMode ? 'MINI VIEWER' : 'MINI HOST'}｜${roomId}` : `${viewerMode ? 'MINI VIEWER' : 'MINI HOST'}`) : (roomId ? `房間 ${roomId}` : 'F7 / F9 / F8 / M');
     }
 
     function updatePresenceDisplay(host = 0, viewer = 0) {
@@ -1272,6 +1293,33 @@
       }
     }
 
+    function openMiniWindow() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mini', '1');
+      if (viewerMode) url.searchParams.set('viewer', '1');
+      else url.searchParams.delete('viewer');
+      if (roomId) url.searchParams.set('room', roomId);
+
+      const features = [
+        'popup=yes',
+        'width=380',
+        'height=720',
+        'menubar=no',
+        'toolbar=no',
+        'location=no',
+        'status=no',
+        'resizable=yes',
+        'scrollbars=no'
+      ].join(',');
+
+      const win = window.open(url.toString(), 'time-rift-mini-window', features);
+      if (win) {
+        try { win.focus(); } catch (e) {}
+      } else {
+        alert('瀏覽器阻擋了小視窗，請允許彈出視窗後再試一次。');
+      }
+    }
+
     function toggleMute() {
       muted = !muted;
       updateSoundUI();
@@ -1292,6 +1340,7 @@
       await unlockAudio();
     }, { passive: false });
     shareBtn.addEventListener('click', copyShareUrl);
+    miniWindowBtn?.addEventListener('click', openMiniWindow);
     joinRoomBtn.addEventListener('click', async () => { await joinRoom(); });
     leaveRoomBtn.addEventListener('click', async () => { await leaveRoom(); });
 
@@ -1339,6 +1388,12 @@
       syncBanner.classList.remove('show');
     } else {
       if (audioGate) audioGate.classList.remove('show');
+    }
+
+    if (miniMode) {
+      document.body.classList.add('mini-mode');
+      metaText.textContent = viewerMode ? 'MINI VIEWER' : 'MINI HOST';
+      if (audioBanner && viewerMode) audioBanner.style.display = 'flex';
     }
 
     if (roomFromUrl) {
