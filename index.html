@@ -801,7 +801,7 @@
       <section class="mini-actions">
         <button class="mini-btn" id="resetBtn">Reset<small>重新校正</small></button>
         <button class="mini-btn" id="shareBtn">分享網址</button>
-        <button class="mini-btn" id="miniWindowBtn">懸浮小窗<small>精簡模式</small></button>
+        <button class="mini-btn" id="miniWindowBtn">置頂小窗<small>支援時優先懸浮</small></button>
       </section>
 
       <section class="room-panel">
@@ -908,6 +908,8 @@
     let audioUnlocked = false;
     let presenceHeartbeat = null;
     let presenceDocRef = null;
+    let pipWindowRef = null;
+    let pipElements = null;
 
     function getAudioCtx() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -921,6 +923,7 @@
         audioUnlocked = true;
         if (audioBanner) audioBanner.style.display = 'none';
         if (audioGate) audioGate.classList.remove('show');
+        renderPiPState();
       } catch (e) {
         console.warn('Audio unlock failed', e);
       }
@@ -962,6 +965,157 @@
 
     function updateSoundUI() {
       soundMini.textContent = muted ? 'OFF' : 'ON';
+      renderPiPState();
+    }
+
+    function isDocumentPiPSupported() {
+      return !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
+    }
+
+    function getFloatingUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mini', '1');
+      if (viewerMode) url.searchParams.set('viewer', '1');
+      if (roomId) url.searchParams.set('room', roomId);
+      return url;
+    }
+
+    function closePiPWindow() {
+      try { pipWindowRef?.close(); } catch (e) {}
+      pipWindowRef = null;
+      pipElements = null;
+      if (miniWindowBtn && !miniMode) {
+        miniWindowBtn.innerHTML = isDocumentPiPSupported()
+          ? '置頂小窗<small>支援時優先懸浮</small>'
+          : '懸浮小窗<small>精簡模式</small>';
+      }
+    }
+
+    function attachPiPStyles(doc) {
+      const style = doc.createElement('style');
+      style.textContent = `
+        :root {
+          --bg-1: #090f1f;
+          --bg-2: #10182d;
+          --line: rgba(255,255,255,.08);
+          --text: #f4f7ff;
+          --muted: #9ba7c6;
+          --safe: #22c55e;
+          --warn: #f59e0b;
+          --danger: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Noto Sans TC", sans-serif; color: var(--text); }
+        body { background: linear-gradient(180deg, var(--bg-1), var(--bg-2)); padding: 10px; }
+        .pip-shell { height: 100%; border-radius: 24px; border: 1px solid rgba(255,255,255,.08); background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025)); box-shadow: 0 18px 50px rgba(0,0,0,.35); padding: 14px; display: grid; gap: 12px; }
+        .pip-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .pip-role { font-size: 12px; font-weight: 900; color: #cdd6ff; letter-spacing: .04em; }
+        .pip-room { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+        .pip-card { border-radius: 22px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)); padding: 16px; display: grid; gap: 8px; min-height: 0; }
+        .pip-phase { font-size: 14px; font-weight: 950; }
+        .pip-label { font-size: 18px; font-weight: 950; letter-spacing: -.03em; }
+        .pip-number { font-size: clamp(72px, 38vw, 132px); font-weight: 980; letter-spacing: -.08em; line-height: .86; }
+        .pip-hint { font-size: 12px; color: var(--muted); min-height: 18px; }
+        .pip-progress { height: 10px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+        .pip-progress > span { display:block; width:0%; height:100%; border-radius:inherit; }
+        .pip-meta { display:flex; justify-content:space-between; gap:12px; font-size:11px; color: var(--muted); font-weight:800; }
+        .pip-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pip-btn { border: 0; border-radius: 18px; min-height: 54px; font: inherit; font-size: 18px; font-weight: 950; cursor: pointer; color: white; }
+        .pip-btn.spawn { background: linear-gradient(180deg, #7c89ff, #5967f4); }
+        .pip-btn.despawn { background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08)); border: 1px solid rgba(255,255,255,.08); }
+        .pip-btn.reset { grid-column: 1 / -1; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.08); font-size: 16px; min-height: 46px; }
+        .pip-footer { display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:11px; color: var(--muted); }
+        .is-safe .pip-phase, .is-safe .pip-number { color: #a8ffca; }
+        .is-safe .pip-progress > span { background: linear-gradient(90deg, #6ff0a0, #22c55e); }
+        .is-warn .pip-phase, .is-warn .pip-number { color: #ffd07b; }
+        .is-warn .pip-progress > span { background: linear-gradient(90deg, #ffd88f, #f59e0b); }
+        .is-danger .pip-phase, .is-danger .pip-number { color: #ff9a9a; }
+        .is-danger .pip-progress > span { background: linear-gradient(90deg, #ff9b9b, #ef4444); }
+      `;
+      doc.head.appendChild(style);
+    }
+
+    function ensurePiPWindowContent(pipWin) {
+      const doc = pipWin.document;
+      doc.open();
+      doc.write('<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Time Rift Floating</title></head><body></body></html>');
+      doc.close();
+      attachPiPStyles(doc);
+      doc.body.innerHTML = `
+        <div class="pip-shell is-safe" id="pipShell">
+          <div class="pip-top">
+            <div class="pip-role" id="pipRole">${viewerMode ? 'VIEWER FLOAT' : 'HOST FLOAT'}</div>
+            <div class="pip-room" id="pipRoom">未連線</div>
+          </div>
+          <div class="pip-card">
+            <div class="pip-phase" id="pipPhase">待命</div>
+            <div class="pip-label" id="pipLabel">等待操作</div>
+            <div class="pip-number" id="pipNumber">--</div>
+            <div class="pip-hint" id="pipHint">等待同步</div>
+            <div class="pip-meta"><span id="pipStateMini">待命</span><span id="pipNextMini">65–85 秒</span></div>
+            <div class="pip-progress"><span id="pipFill"></span></div>
+          </div>
+          ${viewerMode ? '' : '<div class="pip-actions"><button class="pip-btn spawn" id="pipSpawnBtn">Spawn</button><button class="pip-btn despawn" id="pipDespawnBtn">Despawn</button><button class="pip-btn reset" id="pipResetBtn">Reset</button></div>'}
+          <div class="pip-footer"><span id="pipAudio">提示音 ${muted ? 'OFF' : 'ON'}</span><span>PiP</span></div>
+        </div>
+      `;
+      pipElements = {
+        shell: doc.getElementById('pipShell'),
+        room: doc.getElementById('pipRoom'),
+        phase: doc.getElementById('pipPhase'),
+        label: doc.getElementById('pipLabel'),
+        number: doc.getElementById('pipNumber'),
+        hint: doc.getElementById('pipHint'),
+        stateMini: doc.getElementById('pipStateMini'),
+        nextMini: doc.getElementById('pipNextMini'),
+        fill: doc.getElementById('pipFill'),
+        audio: doc.getElementById('pipAudio')
+      };
+      if (!viewerMode) {
+        doc.getElementById('pipSpawnBtn')?.addEventListener('click', () => calibrateFromSpawn(false));
+        doc.getElementById('pipDespawnBtn')?.addEventListener('click', () => calibrateFromDespawn(false));
+        doc.getElementById('pipResetBtn')?.addEventListener('click', () => resetTimer(false));
+      }
+      pipWin.addEventListener('pagehide', closePiPWindow, { once: true });
+      renderPiPState();
+    }
+
+    function renderPiPState() {
+      if (!pipWindowRef || pipWindowRef.closed || !pipElements) return;
+      pipElements.room.textContent = roomId ? `${roomId}｜${viewerMode ? '觀看端' : '操作者'}` : '未連線';
+      pipElements.phase.textContent = statusText.textContent;
+      pipElements.label.textContent = bigLabel.textContent;
+      pipElements.number.textContent = bigNumber.textContent;
+      pipElements.hint.textContent = hintText.textContent;
+      pipElements.stateMini.textContent = stateMini.textContent;
+      pipElements.nextMini.textContent = nextSpawnMini.textContent;
+      pipElements.fill.style.width = barFill.style.width || '0%';
+      pipElements.audio.textContent = `提示音 ${muted ? 'OFF' : 'ON'}`;
+      pipElements.shell.classList.remove('is-safe', 'is-warn', 'is-danger');
+      if (hero.classList.contains('danger')) pipElements.shell.classList.add('is-danger');
+      else if (hero.classList.contains('warn')) pipElements.shell.classList.add('is-warn');
+      else pipElements.shell.classList.add('is-safe');
+    }
+
+    async function openFloatingWindow() {
+      if (isDocumentPiPSupported() && !miniMode) {
+        try {
+          if (pipWindowRef && !pipWindowRef.closed) {
+            pipWindowRef.focus();
+            return;
+          }
+          pipWindowRef = await window.documentPictureInPicture.requestWindow({
+            width: viewerMode ? 360 : 380,
+            height: viewerMode ? 520 : 620
+          });
+          ensurePiPWindowContent(pipWindowRef);
+          if (miniWindowBtn) miniWindowBtn.innerHTML = '置頂小窗<small>已開啟 PiP</small>';
+          return;
+        } catch (error) {
+          console.warn('Document PiP unavailable, fallback to popup.', error);
+        }
+      }
+      openMiniWindow();
     }
 
     function updateShareUrl() {
@@ -993,6 +1147,7 @@
     function updatePresenceDisplay(host = 0, viewer = 0) {
       const total = host + viewer;
       presenceInline.textContent = `在線 ${total} ｜ Host ${host} ｜ Viewer ${viewer}`;
+      renderPiPState();
     }
 
     function clearTimer() {
@@ -1017,6 +1172,7 @@
       stateMini.textContent = viewerMode ? '等待同步' : '待命';
       nextSpawnMini.textContent = '65–85 秒';
       barFill.style.width = '0%';
+      renderPiPState();
     }
 
     async function resetTimer(localOnly = false) {
@@ -1118,6 +1274,7 @@
         stateMini.textContent = '超時';
         nextSpawnMini.textContent = '需要重校';
       }
+      renderPiPState();
     }
 
     async function publishEvent(type, duration = 0) {
@@ -1362,7 +1519,7 @@
       await unlockAudio();
     }, { passive: false });
     shareBtn.addEventListener('click', copyShareUrl);
-    miniWindowBtn?.addEventListener('click', openMiniWindow);
+    miniWindowBtn?.addEventListener('click', openFloatingWindow);
     joinRoomBtn.addEventListener('click', async () => { await joinRoom(); });
     leaveRoomBtn.addEventListener('click', async () => { await leaveRoom(); });
 
@@ -1391,6 +1548,7 @@
       if (presenceDocRef) {
         deleteDoc(presenceDocRef).catch(() => {});
       }
+      closePiPWindow();
     });
 
     updateSoundUI();
