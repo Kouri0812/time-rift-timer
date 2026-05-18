@@ -646,6 +646,73 @@
     body.mini-mode .number { font-size: 34px; line-height: 1; letter-spacing: -.06em; min-width: 48px; text-align: right; }
     body.mini-mode .hint { display: none; }
 
+
+    .mini-pip-hint {
+      display: none;
+    }
+
+    body.mini-mode .mini-pip-hint {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transform: translate(-50%, -50%);
+      min-width: min(360px, calc(100vw - 40px));
+      padding: 16px 22px;
+      border-radius: 999px;
+      background: #5f6dff;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.32);
+      box-shadow:
+        0 0 0 6px rgba(109,124,255,.18),
+        0 18px 50px rgba(0,0,0,.38),
+        inset 0 1px 0 rgba(255,255,255,.16);
+      font-size: 18px;
+      font-weight: 980;
+      letter-spacing: -.02em;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      animation: miniPipHintPulse 1.15s ease-in-out infinite;
+    }
+
+    body.mini-mode .mini-pip-hint::before {
+      content: "↗";
+      width: 26px;
+      height: 26px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    body.mini-mode .mini-pip-hint::after {
+      content: "點擊畫面也可以";
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 10px);
+      transform: translateX(-50%);
+      color: rgba(244,247,255,.72);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    body.mini-mode.pip-hint-hidden .mini-pip-hint {
+      display: none;
+    }
+
+    @keyframes miniPipHintPulse {
+      0%,100% { transform: translate(-50%, -50%) scale(1); opacity: .96; }
+      50% { transform: translate(-50%, -50%) scale(1.035); opacity: 1; }
+    }
+
     .safe .phase { color: var(--safe); }
     .warn .phase { color: var(--warn); }
     .danger .phase { color: var(--danger); }
@@ -1127,15 +1194,15 @@
     }
 
     async function openFloatingWindow() {
-      if (isDocumentPiPSupported() && !miniMode) {
+      if (isDocumentPiPSupported()) {
         try {
           if (pipWindowRef && !pipWindowRef.closed) {
             pipWindowRef.focus();
             return;
           }
           pipWindowRef = await window.documentPictureInPicture.requestWindow({
-            width: 420,
-            height: 74
+            width: 520,
+            height: 84
           });
           ensurePiPWindowContent(pipWindowRef);
           if (miniWindowBtn) miniWindowBtn.innerHTML = '置頂小窗<small>已開啟 PiP</small>';
@@ -1149,11 +1216,15 @@
 
     function updateShareUrl() {
       const url = new URL(window.location.href);
+
+      // 分享網址預設給隊友「觀看 + HUD 小窗」模式
       url.searchParams.set('viewer', '1');
+      url.searchParams.set('mini', '1');
+
       if (roomId) url.searchParams.set('room', roomId);
       const shareText = url.toString();
       shareUrlInput.value = shareText;
-      shareUrlPreview.textContent = roomId ? shareText : 'Viewer 連結';
+      shareUrlPreview.textContent = roomId ? shareText : 'Viewer HUD 連結';
     }
 
     function setSyncState(text, showBanner = false) {
@@ -1533,6 +1604,37 @@
       updateSoundUI();
     }
 
+
+    function setupMiniPiPGuide() {
+      if (!miniMode) return;
+      if (document.querySelector('.mini-pip-hint')) return;
+
+      const hint = document.createElement('button');
+      hint.type = 'button';
+      hint.className = 'mini-pip-hint';
+      hint.textContent = '點一下啟用置頂小窗';
+      hint.setAttribute('aria-label', '點一下啟用置頂小窗');
+      document.body.appendChild(hint);
+
+      let activating = false;
+      const activate = async (event) => {
+        if (event) event.preventDefault();
+        if (activating) return;
+        activating = true;
+        hint.textContent = '正在開啟置頂小窗…';
+        await unlockAudio();
+        await openFloatingWindow();
+        document.body.classList.add('pip-hint-hidden');
+      };
+
+      hint.addEventListener('click', activate);
+      document.body.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (target && ['INPUT', 'TEXTAREA', 'SELECT', 'A'].includes(target.tagName)) return;
+        await activate(event);
+      }, { once: true });
+    }
+
     spawnBtn.addEventListener('click', async () => { await calibrateFromSpawn(false); });
     despawnBtn.addEventListener('click', async () => { await calibrateFromDespawn(false); });
     resetBtn.addEventListener('click', async () => { await resetTimer(false); });
@@ -1588,8 +1690,16 @@
 
     if (viewerMode) {
       document.body.classList.add('viewer-mode');
-      if (audioBanner) audioBanner.style.display = 'flex';
-      if (audioGate && !audioUnlocked) audioGate.classList.add('show');
+
+      // mini HUD 模式不要跳出大型提示音遮罩，避免分享網址打開後又變回完整介面感
+      if (!miniMode) {
+        if (audioBanner) audioBanner.style.display = 'flex';
+        if (audioGate && !audioUnlocked) audioGate.classList.add('show');
+      } else {
+        if (audioBanner) audioBanner.style.display = 'none';
+        if (audioGate) audioGate.classList.remove('show');
+      }
+
       viewerBanner.textContent = '觀看模式';
       statusText.textContent = '觀看模式';
       bigLabel.textContent = '等待操作';
@@ -1602,7 +1712,9 @@
     if (miniMode) {
       document.body.classList.add('mini-mode');
       metaText.textContent = viewerMode ? 'MINI VIEWER' : 'MINI HOST';
-      if (audioBanner && viewerMode) audioBanner.style.display = 'flex';
+      if (audioBanner) audioBanner.style.display = 'none';
+      if (audioGate) audioGate.classList.remove('show');
+      setupMiniPiPGuide();
     }
 
     if (roomFromUrl) {
