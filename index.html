@@ -618,22 +618,21 @@
     body.mini-mode .room-panel,
     body.mini-mode .mini-actions,
     body.mini-mode #miniWindowBtn,
-    body.mini-mode .controls,
     body.mini-mode .compact-row,
     body.mini-mode .progress,
     body.mini-mode .unit { display: none !important; }
     body.mini-mode .main { padding: 0; gap: 0; }
     body.mini-mode .hero {
-      padding: 8px 10px;
-      gap: 0;
-      border-radius: 18px;
+      padding: 4px 10px;
+      border-radius: 16px;
       border: 0;
       background: transparent;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
+      display: flex;
       align-items: center;
-      column-gap: 10px;
-      min-height: 56px;
+      gap: 8px;
+      min-height: 40px;
+      height: 40px;
+      overflow: hidden;
     }
     body.mini-mode .hero::after { display: none; }
     body.mini-mode .hero-head { display: contents; }
@@ -645,6 +644,138 @@
     body.mini-mode .timer-row { display: block; }
     body.mini-mode .number { font-size: 34px; line-height: 1; letter-spacing: -.06em; min-width: 48px; text-align: right; }
     body.mini-mode .hint { display: none; }
+    body.mini-mode .center {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    body.mini-mode .hero-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    body.mini-mode .big-label {
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+      margin: 0;
+    }
+
+    body.mini-mode .timer-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    body.mini-mode .number {
+      font-size: 24px;
+      line-height: 1;
+      min-width: auto;
+    }
+
+    body.mini-mode .mini-inline-actions {
+      display: flex !important;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    body.mini-mode .mini-inline-btn {
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    body.mini-mode .mini-inline-btn.spawn {
+      background: rgba(124,137,255,.30);
+    }
+
+    body.mini-mode .mini-inline-btn.despawn {
+      background: rgba(255,255,255,.08);
+    }
+
+    body.mini-mode .controls,
+    body.mini-mode .compact-row,
+    body.mini-mode .progress,
+    body.mini-mode .hint,
+    body.mini-mode .unit {
+      display: none !important;
+    }
+
+
+    .mini-inline-actions { display: none; }
+
+    body.mini-mode .mini-inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    body.mini-mode .mini-inline-btn {
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      color: #f4f7ff;
+      font-size: 11px;
+      font-weight: 950;
+      cursor: pointer;
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    body.mini-mode .mini-inline-btn.spawn {
+      background: rgba(124,137,255,.26);
+      border-color: rgba(124,137,255,.34);
+    }
+
+    body.mini-mode .mini-inline-btn.despawn {
+      background: rgba(255,255,255,.075);
+    }
+
+    body.mini-mode .controls {
+      display: none !important;
+    }
+
+
+    body.mini-mode .controls {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 0 6px 6px;
+      background: #111827;
+    }
+
+    body.mini-mode .action-btn {
+      min-height: 42px;
+      border-radius: 14px;
+      padding: 8px 10px;
+      font-size: 13px;
+      letter-spacing: -.01em;
+      box-shadow: none;
+    }
+
+    body.mini-mode .action-btn small {
+      display: none;
+    }
+
+    body.mini-mode.viewer-mode .controls {
+      display: none !important;
+    }
 
 
     .mini-pip-hint {
@@ -814,7 +945,97 @@
       }
       .meta { font-size: 10px; }
     }
-  </style>
+  
+@media (max-width: 99999px) {
+  body.mini-mode .app {
+    height: 48px !important;
+    overflow: hidden !important;
+  }
+
+  body.mini-mode .main {
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.mini-mode .hero {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 4px 10px !important;
+    margin: 0 !important;
+  }
+
+  body.mini-mode .controls {
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+
+    width: auto !important;
+    height: auto !important;
+
+    z-index: 20;
+  }
+
+  body.mini-mode .action-btn {
+    width: auto !important;
+    min-width: 72px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+
+    padding: 0 8px !important;
+    margin: 0 !important;
+
+    font-size: 10px !important;
+    border-radius: 999px !important;
+  }
+
+  body.mini-mode .action-btn small {
+    display: none !important;
+  }
+
+  body.mini-mode .center {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  body.mini-mode .big-label {
+    font-size: 12px !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.mini-mode .timer-row {
+    display: flex !important;
+    align-items: center !important;
+    margin-left: auto !important;
+  }
+
+  body.mini-mode .number {
+    font-size: 24px !important;
+    line-height: 1 !important;
+  }
+
+  body.mini-mode .compact-row,
+  body.mini-mode .progress,
+  body.mini-mode .hint,
+  body.mini-mode .mini-inline-actions {
+    display: none !important;
+  }
+}
+
+</style>
 </head>
 <body>
   <div class="audio-gate" id="audioGate" aria-live="polite">
@@ -848,12 +1069,17 @@
         </div>
 
         <div class="center">
-          <div class="big-label" id="bigLabel">按下 Spawn 或 Despawn</div>
+          <div class="big-label" id="bigLabel">等待操作</div>
           <div class="timer-row">
             <div class="number" id="bigNumber">--</div>
             <div class="unit">sec</div>
           </div>
           <div class="hint" id="hintText">狀態 / 秒數 / 提示</div>
+        </div>
+
+        <div class="mini-inline-actions">
+          <button class="mini-inline-btn spawn" id="miniInlineSpawnBtn" type="button">黑水出現</button>
+          <button class="mini-inline-btn despawn" id="miniInlineDespawnBtn" type="button">黑水消失</button>
         </div>
 
         <div class="compact-row compact-row-min">
@@ -1114,8 +1340,9 @@
           padding: 8px 10px;
           display: grid;
           grid-template-columns: auto 1fr auto;
+          grid-template-rows: auto auto;
           align-items: center;
-          gap: 10px;
+          gap: 7px 10px;
         }
         .pip-phase {
           display: inline-flex;
@@ -1152,6 +1379,30 @@
           letter-spacing: -.07em;
           line-height: 1;
         }
+        .pip-actions {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+        }
+        .pip-btn {
+          border: 0;
+          min-height: 38px;
+          border-radius: 13px;
+          color: #fff;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 950;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .pip-btn:active { transform: translateY(1px) scale(.995); }
+        .pip-spawn { background: linear-gradient(180deg, #7c89ff, #5967f4); }
+        .pip-despawn {
+          background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.065));
+          border: 1px solid rgba(255,255,255,.09);
+        }
+        .pip-viewer .pip-actions { display: none; }
         .is-safe .pip-phase, .is-safe .pip-number { color: #a8ffca; }
         .is-warn .pip-phase, .is-warn .pip-number { color: #ffd07b; }
         .is-danger .pip-phase, .is-danger .pip-number { color: #ff9a9a; }
@@ -1166,18 +1417,32 @@
       doc.close();
       attachPiPStyles(doc);
       doc.body.innerHTML = `
-        <div class="pip-shell is-safe" id="pipShell">
+        <div class="pip-shell is-safe ${viewerMode ? 'pip-viewer' : ''}" id="pipShell">
           <div class="pip-phase" id="pipPhase">待命</div>
           <div class="pip-label" id="pipLabel">等待操作</div>
           <div class="pip-number" id="pipNumber">--</div>
+          <div class="pip-actions" id="pipActions">
+            <button class="pip-btn pip-spawn" id="pipSpawnBtn" type="button">黑水出現</button>
+            <button class="pip-btn pip-despawn" id="pipDespawnBtn" type="button">黑水消失</button>
+          </div>
         </div>
       `;
       pipElements = {
         shell: doc.getElementById('pipShell'),
         phase: doc.getElementById('pipPhase'),
         label: doc.getElementById('pipLabel'),
-        number: doc.getElementById('pipNumber')
+        number: doc.getElementById('pipNumber'),
+        spawnBtn: doc.getElementById('pipSpawnBtn'),
+        despawnBtn: doc.getElementById('pipDespawnBtn')
       };
+      pipElements.spawnBtn?.addEventListener('click', async () => {
+        await unlockAudio();
+        await calibrateFromSpawn(false);
+      });
+      pipElements.despawnBtn?.addEventListener('click', async () => {
+        await unlockAudio();
+        await calibrateFromDespawn(false);
+      });
       pipWin.addEventListener('pagehide', closePiPWindow, { once: true });
       renderPiPState();
     }
@@ -1202,7 +1467,7 @@
           }
           pipWindowRef = await window.documentPictureInPicture.requestWindow({
             width: 520,
-            height: 84
+            height: viewerMode ? 84 : 128
           });
           ensurePiPWindowContent(pipWindowRef);
           if (miniWindowBtn) miniWindowBtn.innerHTML = '置頂小窗<small>已開啟 PiP</small>';
@@ -1563,7 +1828,7 @@
       if (roomId) url.searchParams.set('room', roomId);
 
       const width = 520;
-      const height = 82;
+      const height = viewerMode ? 82 : 128;
       const left = Math.max(0, (window.screen?.availWidth || window.innerWidth || 1280) - width - 24);
       const top = 24;
 
@@ -1637,6 +1902,16 @@
 
     spawnBtn.addEventListener('click', async () => { await calibrateFromSpawn(false); });
     despawnBtn.addEventListener('click', async () => { await calibrateFromDespawn(false); });
+    document.getElementById('miniInlineSpawnBtn')?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await unlockAudio();
+      await calibrateFromSpawn(false);
+    });
+    document.getElementById('miniInlineDespawnBtn')?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await unlockAudio();
+      await calibrateFromDespawn(false);
+    });
     resetBtn.addEventListener('click', async () => { await resetTimer(false); });
     soundMini.addEventListener('click', async () => { await unlockAudio(); toggleMute(); });
     audioBanner.addEventListener('click', async () => { await unlockAudio(); });
