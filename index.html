@@ -101,6 +101,28 @@
       text-overflow: ellipsis;
     }
 
+    .top-mode-btn {
+      flex: 0 0 auto;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      color: #e9edff;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: .01em;
+      white-space: nowrap;
+      box-shadow: none;
+    }
+
+    .top-mode-btn.mode-toggle-active {
+      color: #f7ecff;
+      background: linear-gradient(180deg, rgba(168,85,247,.24), rgba(109,40,217,.16));
+      border-color: rgba(216,180,254,.32);
+      box-shadow: 0 10px 28px rgba(88,28,135,.16);
+    }
+
     .main {
       padding: 14px;
       display: grid;
@@ -392,6 +414,31 @@
       gap: 10px;
     }
 
+    .chain-action {
+      display: none;
+      grid-column: 1 / -1;
+      min-height: 92px;
+      background: linear-gradient(180deg, #a855f7, #6d28d9);
+      color: white;
+      border: 1px solid rgba(216,180,254,.28);
+      box-shadow: 0 16px 36px rgba(88,28,135,.22);
+    }
+
+    body.chain-mode .spawn-action,
+    body.chain-mode .despawn-action {
+      display: none;
+    }
+
+    body.chain-mode .chain-action {
+      display: block;
+    }
+
+    .mode-toggle-active {
+      color: #f4e8ff;
+      background: linear-gradient(180deg, rgba(168,85,247,.24), rgba(109,40,217,.16));
+      border-color: rgba(216,180,254,.30);
+    }
+
     button, input {
       font: inherit;
       border: 0;
@@ -441,7 +488,7 @@
 
     .mini-actions {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -490,7 +537,7 @@
 
     .room-actions {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto auto auto;
       gap: 10px;
     }
 
@@ -773,6 +820,15 @@
       display: none;
     }
 
+    body.mini-mode.chain-mode .controls {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.mini-mode.chain-mode .chain-action {
+      display: block !important;
+      min-width: 112px !important;
+    }
+
     body.mini-mode.viewer-mode .controls {
       display: none !important;
     }
@@ -911,10 +967,10 @@
       .compact-v { font-size: 14px; }
       .controls { gap: 8px; }
       .action-btn { min-height: 84px; font-size: 22px; }
-      .mini-actions { gap: 8px; grid-template-columns: repeat(3, 1fr); }
+      .mini-actions { gap: 8px; grid-template-columns: repeat(2, 1fr); }
       .room-panel { gap: 8px; padding: 10px; }
-      .room-actions { grid-template-columns: 1fr 1fr; }
-      #roomInput { grid-column: span 2; }
+      .room-actions { grid-template-columns: repeat(3, 1fr); }
+      #roomInput { grid-column: span 3; }
       .room-btn { min-height: 54px; }
       .share-url { font-size: 11px; }
       .audio-gate { padding: 14px; }
@@ -1000,6 +1056,15 @@
     display: none !important;
   }
 
+  body.mini-mode.chain-mode .controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.mini-mode.chain-mode .chain-action {
+    display: block !important;
+    min-width: 112px !important;
+  }
+
   body.mini-mode .center {
     display: flex !important;
     align-items: center !important;
@@ -1054,6 +1119,7 @@
         <div class="title">Time Rift</div>
         <div class="pill">Hard Lotus</div>
       </div>
+      <button class="top-mode-btn" id="modeToggleBtn" type="button">黑水模式</button>
       <div class="sync-badge" id="syncStateBadge">Sync idle</div>
     </div>
 
@@ -1105,11 +1171,11 @@
       <section class="controls">
         <button class="action-btn spawn-action" id="spawnBtn">Spawn<small>黑水出現</small></button>
         <button class="action-btn despawn-action" id="despawnBtn">Despawn<small>黑水消失</small></button>
+        <button class="action-btn chain-action" id="chainBtn">Spawn<small>黑鎖鏈倒數｜最後 10 秒警示</small></button>
       </section>
 
       <section class="mini-actions">
         <button class="mini-btn" id="resetBtn">Reset<small>重新校正</small></button>
-        <button class="mini-btn" id="shareBtn">分享網址</button>
         <button class="mini-btn" id="miniWindowBtn">置頂小窗<small>支援時優先懸浮</small></button>
       </section>
 
@@ -1121,6 +1187,7 @@
         <div class="presence-inline" id="presenceInline">在線 0 ｜ Host 0 ｜ Viewer 0</div>
         <div class="room-actions">
           <input id="roomInput" type="text" placeholder="輸入房號，例如 lotus-team-a" />
+          <button class="room-btn" id="shareBtn">分享</button>
           <button class="room-btn" id="joinRoomBtn">連線</button>
           <button class="room-btn" id="leaveRoomBtn">離開</button>
         </div>
@@ -1161,6 +1228,7 @@
     const MAX_SPAWN = 85;
     const FINAL_WARNING_SECONDS = 10;
     const BLACK_WATER_DURATION = 30;
+    const BLACK_CHAIN_DURATION = 30;
     const PRESENCE_TTL_MS = 35000;
     const PRESENCE_HEARTBEAT_MS = 15000;
 
@@ -1178,6 +1246,8 @@
     const presenceInline = document.getElementById('presenceInline');
     const spawnBtn = document.getElementById('spawnBtn');
     const despawnBtn = document.getElementById('despawnBtn');
+    const chainBtn = document.getElementById('chainBtn');
+    const modeToggleBtn = document.getElementById('modeToggleBtn');
     const resetBtn = document.getElementById('resetBtn');
     const shareUrlInput = document.getElementById('shareUrlInput');
     const shareUrlPreview = document.getElementById('shareUrlPreview');
@@ -1206,6 +1276,8 @@
     let muted = false;
     let hasCalibration = false;
     let nextSpawnTarget = 0;
+    let timerMode = 'blackwater';
+    let currentToolMode = 'blackwater';
     let timer = null;
     let audioCtx = null;
     let roomId = '';
@@ -1275,6 +1347,50 @@
     function updateSoundUI() {
       soundMini.textContent = muted ? 'OFF' : 'ON';
       renderPiPState();
+    }
+
+    function updateToolModeUI() {
+      const isChainMode = currentToolMode === 'chain';
+      document.body.classList.toggle('chain-mode', isChainMode);
+
+      if (modeToggleBtn) {
+        modeToggleBtn.classList.toggle('mode-toggle-active', isChainMode);
+        modeToggleBtn.innerHTML = isChainMode
+          ? '切換：黑水<small>目前黑鎖鏈</small>'
+          : '切換：黑鎖鏈<small>目前黑水</small>';
+      }
+
+      if (!running) {
+        setClass('safe');
+        bigNumber.textContent = '--';
+        barFill.style.width = '0%';
+
+        if (isChainMode) {
+          statusText.textContent = viewerMode ? '觀看模式' : '黑鎖鏈';
+          bigLabel.textContent = viewerMode ? '等待操作' : '按下黑鎖鏈倒數';
+          hintText.textContent = viewerMode ? '等待同步' : '30 秒倒數，最後 10 秒警示音';
+          stateMini.textContent = viewerMode ? '等待同步' : '黑鎖鏈待命';
+          nextSpawnMini.textContent = '30 秒';
+        } else {
+          statusText.textContent = viewerMode ? '觀看模式' : '待命';
+          bigLabel.textContent = viewerMode ? '等待操作' : '按下 Spawn 或 Despawn';
+          hintText.textContent = viewerMode ? '等待同步' : '狀態 / 秒數 / 提示';
+          stateMini.textContent = viewerMode ? '等待同步' : '待命';
+          nextSpawnMini.textContent = '65–85 秒';
+        }
+      }
+
+      renderPiPState();
+    }
+
+    function toggleToolMode() {
+      if (viewerMode) return;
+      currentToolMode = currentToolMode === 'chain' ? 'blackwater' : 'chain';
+      clearTimer();
+      hasCalibration = false;
+      dangerAlertPlayed = false;
+      lastWarningSecond = null;
+      updateToolModeUI();
     }
 
     function isDocumentPiPSupported() {
@@ -1385,6 +1501,17 @@
           grid-template-columns: 1fr 1fr;
           gap: 6px;
         }
+        .pip-chain { display: none; }
+        .pip-shell.pip-chain-mode .pip-spawn,
+        .pip-shell.pip-chain-mode .pip-despawn {
+          display: none;
+        }
+        .pip-shell.pip-chain-mode .pip-actions {
+          grid-template-columns: 1fr;
+        }
+        .pip-shell.pip-chain-mode .pip-chain {
+          display: block;
+        }
         .pip-btn {
           border: 0;
           min-height: 38px;
@@ -1401,6 +1528,10 @@
         .pip-despawn {
           background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.065));
           border: 1px solid rgba(255,255,255,.09);
+        }
+        .pip-chain {
+          background: linear-gradient(180deg, #a855f7, #6d28d9);
+          border: 1px solid rgba(216,180,254,.25);
         }
         .pip-viewer .pip-actions { display: none; }
         .is-safe .pip-phase, .is-safe .pip-number { color: #a8ffca; }
@@ -1424,6 +1555,7 @@
           <div class="pip-actions" id="pipActions">
             <button class="pip-btn pip-spawn" id="pipSpawnBtn" type="button">黑水出現</button>
             <button class="pip-btn pip-despawn" id="pipDespawnBtn" type="button">黑水消失</button>
+            <button class="pip-btn pip-chain" id="pipChainBtn" type="button">黑鎖鏈倒數</button>
           </div>
         </div>
       `;
@@ -1433,7 +1565,8 @@
         label: doc.getElementById('pipLabel'),
         number: doc.getElementById('pipNumber'),
         spawnBtn: doc.getElementById('pipSpawnBtn'),
-        despawnBtn: doc.getElementById('pipDespawnBtn')
+        despawnBtn: doc.getElementById('pipDespawnBtn'),
+        chainBtn: doc.getElementById('pipChainBtn')
       };
       pipElements.spawnBtn?.addEventListener('click', async () => {
         await unlockAudio();
@@ -1442,6 +1575,10 @@
       pipElements.despawnBtn?.addEventListener('click', async () => {
         await unlockAudio();
         await calibrateFromDespawn(false);
+      });
+      pipElements.chainBtn?.addEventListener('click', async () => {
+        await unlockAudio();
+        await startBlackChainCountdown(false);
       });
       pipWin.addEventListener('pagehide', closePiPWindow, { once: true });
       renderPiPState();
@@ -1452,7 +1589,8 @@
       pipElements.phase.textContent = statusText.textContent;
       pipElements.label.textContent = bigLabel.textContent;
       pipElements.number.textContent = bigNumber.textContent;
-      pipElements.shell.classList.remove('is-safe', 'is-warn', 'is-danger');
+      pipElements.shell.classList.remove('is-safe', 'is-warn', 'is-danger', 'pip-chain-mode');
+      pipElements.shell.classList.toggle('pip-chain-mode', currentToolMode === 'chain');
       if (hero.classList.contains('danger')) pipElements.shell.classList.add('is-danger');
       else if (hero.classList.contains('warn')) pipElements.shell.classList.add('is-warn');
       else pipElements.shell.classList.add('is-safe');
@@ -1530,14 +1668,7 @@
       hasCalibration = false;
       dangerAlertPlayed = false;
       setClass('safe');
-      statusText.textContent = viewerMode ? '觀看模式' : '待命';
-      bigNumber.textContent = '--';
-      bigLabel.textContent = viewerMode ? '等待操作' : '按下 Spawn 或 Despawn';
-      hintText.textContent = viewerMode ? '等待同步' : '狀態 / 秒數 / 提示';
-      stateMini.textContent = viewerMode ? '等待同步' : '待命';
-      nextSpawnMini.textContent = '65–85 秒';
-      barFill.style.width = '0%';
-      renderPiPState();
+      updateToolModeUI();
     }
 
     async function resetTimer(localOnly = false) {
@@ -1545,7 +1676,8 @@
       if (!localOnly) await publishEvent('reset', 0);
     }
 
-    function startTimer(durationSec) {
+    function startTimer(durationSec, mode = 'blackwater') {
+      timerMode = mode;
       nextSpawnTarget = performance.now() + durationSec * 1000;
       running = true;
       hasCalibration = true;
@@ -1558,22 +1690,79 @@
 
     async function calibrateFromSpawn(localOnly = false) {
       if (viewerMode && !localOnly) return;
-      startTimer(MAX_SPAWN);
+      currentToolMode = 'blackwater';
+      updateToolModeUI();
+      startTimer(MAX_SPAWN, 'blackwater');
       beep('spawn');
       if (!localOnly) await publishEvent('spawn', MAX_SPAWN);
     }
 
     async function calibrateFromDespawn(localOnly = false) {
       if (viewerMode && !localOnly) return;
-      startTimer(MAX_SPAWN - BLACK_WATER_DURATION);
+      currentToolMode = 'blackwater';
+      updateToolModeUI();
+      startTimer(MAX_SPAWN - BLACK_WATER_DURATION, 'blackwater');
       tone(900, 140, 0.2);
       if (!localOnly) await publishEvent('despawn', MAX_SPAWN - BLACK_WATER_DURATION);
+    }
+
+    async function startBlackChainCountdown(localOnly = false) {
+      if (viewerMode && !localOnly) return;
+      currentToolMode = 'chain';
+      updateToolModeUI();
+      startTimer(BLACK_CHAIN_DURATION, 'chain');
+      tone(520, 180, 0.22);
+      if (!localOnly) await publishEvent('chain', BLACK_CHAIN_DURATION);
     }
 
     function render() {
       if (!running || !hasCalibration) return;
 
       const remaining = Math.max(0, (nextSpawnTarget - performance.now()) / 1000);
+
+      if (timerMode === 'chain') {
+        const elapsed = BLACK_CHAIN_DURATION - remaining;
+        const sec = Math.ceil(remaining);
+        const progress = Math.min(100, (elapsed / BLACK_CHAIN_DURATION) * 100);
+        barFill.style.width = `${progress}%`;
+        bigNumber.classList.remove('jump');
+        bigNumber.textContent = Math.max(0, sec);
+        bigLabel.textContent = '黑鎖鏈倒數';
+        stateMini.textContent = '黑鎖鏈';
+        nextSpawnMini.textContent = `${Math.max(0, sec)} 秒`;
+
+        if (sec <= FINAL_WARNING_SECONDS && sec > 0) {
+          setClass('warn');
+          statusText.textContent = '黑鎖鏈預警';
+          hintText.textContent = '最後 10 秒';
+          if (lastWarningSecond !== sec) {
+            beep('warn');
+            lastWarningSecond = sec;
+          }
+          bigNumber.classList.add('jump');
+        } else {
+          setClass('safe');
+          statusText.textContent = '黑鎖鏈倒數';
+          hintText.textContent = '30 秒倒數中';
+          lastWarningSecond = null;
+        }
+
+        if (remaining <= 0) {
+          clearTimer();
+          setClass('danger');
+          statusText.textContent = '黑鎖鏈結束';
+          bigNumber.textContent = '0';
+          bigLabel.textContent = '請注意狀態';
+          hintText.textContent = '黑鎖鏈倒數結束';
+          stateMini.textContent = '結束';
+          nextSpawnMini.textContent = '0 秒';
+          tone(760, 120, 0.2);
+        }
+
+        renderPiPState();
+        return;
+      }
+
       const elapsed = MAX_SPAWN - remaining;
       const progress = Math.min(100, (elapsed / MAX_SPAWN) * 100);
       const earliestRemain = Math.max(0, MIN_SPAWN - elapsed);
@@ -1663,6 +1852,7 @@
 
       if (data.type === 'spawn') calibrateFromSpawn(true);
       else if (data.type === 'despawn') calibrateFromDespawn(true);
+      else if (data.type === 'chain') startBlackChainCountdown(true);
       else if (data.type === 'reset') resetTimer(true);
       else if (data.type === 'idle') setSyncState(viewerMode ? `Viewer synced: ${data.roomId || roomId}` : `Host synced: ${data.roomId || roomId}`, true);
     }
@@ -1810,9 +2000,9 @@
     async function copyShareUrl() {
       try {
         await navigator.clipboard.writeText(shareUrlInput.value);
-        shareBtn.innerHTML = '已複製<small>貼給隊友即可</small>';
+        shareBtn.textContent = '已複製';
         setTimeout(() => {
-          shareBtn.innerHTML = '分享網址';
+          shareBtn.textContent = '分享';
         }, 1800);
       } catch {
         shareUrlInput.focus();
@@ -1902,6 +2092,8 @@
 
     spawnBtn.addEventListener('click', async () => { await calibrateFromSpawn(false); });
     despawnBtn.addEventListener('click', async () => { await calibrateFromDespawn(false); });
+    chainBtn.addEventListener('click', async () => { await unlockAudio(); await startBlackChainCountdown(false); });
+    modeToggleBtn?.addEventListener('click', async () => { await unlockAudio(); toggleToolMode(); });
     document.getElementById('miniInlineSpawnBtn')?.addEventListener('click', async (e) => {
       e.stopPropagation();
       await unlockAudio();
@@ -1938,7 +2130,8 @@
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
       if (e.key === 'F7' || e.code === 'Space') {
         e.preventDefault();
-        await calibrateFromSpawn(false);
+        if (currentToolMode === 'chain') await startBlackChainCountdown(false);
+        else await calibrateFromSpawn(false);
       } else if (e.key === 'F9' || e.key === 'Control') {
         e.preventDefault();
         await calibrateFromDespawn(false);
@@ -1958,6 +2151,7 @@
     });
 
     updateSoundUI();
+    updateToolModeUI();
     setRoomUI();
     setSyncState('Sync idle', false);
     updatePresenceDisplay(0, 0);
